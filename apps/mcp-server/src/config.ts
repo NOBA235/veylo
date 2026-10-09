@@ -6,6 +6,7 @@ export interface ServerConfig {
   /** Reply with application/json instead of an SSE stream (the tools here never stream). */
   jsonResponse: boolean;
   braveApiKey?: string;
+  demoMode?: boolean;
 }
 
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
@@ -26,5 +27,6 @@ export function loadConfig(env: Record<string, string | undefined>): ServerConfi
     authToken,
     jsonResponse: env.MCP_JSON_RESPONSE !== "false",
     braveApiKey: env.BRAVE_SEARCH_API_KEY?.trim() || undefined,
+    ...(env.DEMO_MODE === "true" ? { demoMode: true } : {}),
   };
 }

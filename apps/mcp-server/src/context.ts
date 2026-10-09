@@ -3,6 +3,7 @@ import {
   BraveSearchProvider, VeyloError, type CoreContext, type Geocoder,
 } from "@veylo/core";
 import { createPgProductRepository, createPgShoppingListStore } from "@veylo/core/pg";
+import { makeCtx } from "@veylo/core/testing";
 import { createDb } from "@veylo/db";
 import type { ServerConfig } from "./config";
 
@@ -14,6 +15,36 @@ const noGeocoder: Geocoder = {
 };
 
 export function buildContext(config: ServerConfig) {
+  if (config.demoMode) {
+    const demoCtx = makeCtx({
+      evidenceProviders: [
+        {
+          name: "demo web listing",
+          lookup: async ({ place, product }) =>
+            place.id === "osm:node/1" && product === "USB-C to HDMI adapter"
+              ? [
+                  {
+                    kind: "product_listed",
+                    source: "store website",
+                    sourceType: "web",
+                    timestamp: new Date().toISOString(),
+                    confidence: 0.72,
+                    firstParty: true,
+                    summary: "Online product listing found; shelf stock not shown.",
+                  },
+                ]
+              : [],
+        },
+      ],
+      clock: () => new Date(),
+    });
+    return {
+      ctx: demoCtx,
+      handlers: createToolExecutor(createCoreServices(demoCtx), demoCtx.logger),
+      close: async () => {},
+    };
+  }
+
   const { db, pool } = createDb();
   const ctx: CoreContext = {
     catalog: new CatalogService(createPgProductRepository(db)),

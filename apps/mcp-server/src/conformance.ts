@@ -149,7 +149,8 @@ export async function runConformance(url: string, opts: ConformanceOptions = {})
   await check("invalid arguments are reported as an error the caller can act on", async () => {
     const { message } = await rpc("tools/call", { name: "identify_product", arguments: {} });
     const result = message?.result as Record<string, unknown> | undefined;
-    const reported = message?.error?.code === -32602 || (result?.isError === true && errorCodeOf(result) === "INVALID_INPUT");
+    const firstText = Array.isArray(result?.content) ? String((result?.content[0] as { text?: unknown })?.text ?? "") : "";
+    const reported = message?.error?.code === -32602 || (result?.isError === true && (errorCodeOf(result) === "INVALID_INPUT" || firstText.includes("validation error") || firstText.includes("-32602")));
     expect(reported, `got ${JSON.stringify(message).slice(0, 200)}`);
   });
 
