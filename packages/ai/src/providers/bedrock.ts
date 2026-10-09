@@ -148,3 +148,4 @@ export class BedrockCompareAssist implements CompareAssist {
     return extractJsonFromText(outputText, CompareAssistResultSchema);
   }
 }
+

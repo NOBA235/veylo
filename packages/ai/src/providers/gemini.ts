@@ -114,3 +114,4 @@ export class GeminiCompareAssist implements CompareAssist {
     return extractJsonFromText(outputText, CompareAssistResultSchema);
   }
 }
+

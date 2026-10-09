@@ -145,7 +145,7 @@ All inputs and outputs are Zod schemas in `packages/types/src/tools.ts`; the ser
 | `search_web` | Web research fallback | `query`, optional `location`, `limit` | `trust` is always `WEB_FOUND`; needs `BRAVE_SEARCH_API_KEY`, else `NOT_CONFIGURED` |
 | `create_shopping_list` | Persist items to buy | `items[{product, quantity (default 1), notes}]` | Resolves names to catalogue names; stored in Postgres |
 
-Not yet live (Phase 7): the place source (Overpass), geocoder (Nominatim) and web evidence providers. Until they are configured, `discover_local_places` returns `NOT_CONFIGURED` for place names and for `"lat,lon"` alike, rather than inventing stores.
+Live local discovery: implemented in `@veylo/local-discovery` via `OverpassPlaceSource` (OpenStreetMap / Overpass), `NominatimGeocoder` (OpenStreetMap Nominatim), `WebEvidenceProvider` (web mentions & first-party store signals), and `CachedPlaceStore`. In demo mode, Austin fixtures guarantee 100% offline reliability while still supporting live Overpass discovery for any other location.
 
 ## Composing the tools
 

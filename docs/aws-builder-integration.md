@@ -169,3 +169,4 @@ pnpm --filter @veylo/ai test
 | **Modern AWS APIs** | AWS Bedrock `ConverseCommand` API with cross-region profiles | [`packages/ai/src/providers/bedrock.ts`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/packages/ai/src/providers/bedrock.ts#L45-L68) |
 | **Documented Integration** | Comprehensive technical documentation and `.env.example` | [`docs/aws-builder-integration.md`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/docs/aws-builder-integration.md), [`.env.example`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/.env.example) |
 | **Zero-Billing Resilience** | Graceful fallback to offline deterministic rules | [`packages/ai/src/index.ts`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/packages/ai/src/index.ts#L43-L68) |
+

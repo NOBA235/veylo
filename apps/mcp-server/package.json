@@ -15,6 +15,7 @@
     "@veylo/ai": "workspace:*",
     "@veylo/core": "workspace:*",
     "@veylo/db": "workspace:*",
+    "@veylo/local-discovery": "workspace:*",
     "@veylo/types": "workspace:*",
     "dotenv": "^16.4.5",
     "express": "^5.1.0",

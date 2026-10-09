@@ -122,3 +122,4 @@ export class OpenAiCompareAssist implements CompareAssist {
     return extractJsonFromText(outputText, CompareAssistResultSchema);
   }
 }
+

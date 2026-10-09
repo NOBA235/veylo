@@ -41,6 +41,9 @@ importers:
       '@veylo/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@veylo/local-discovery':
+        specifier: workspace:*
+        version: link:../../packages/local-discovery
       '@veylo/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -75,6 +78,9 @@ importers:
       '@veylo/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@veylo/local-discovery':
+        specifier: workspace:*
+        version: link:../../packages/local-discovery
       '@veylo/mcp-client':
         specifier: workspace:*
         version: link:../../packages/mcp-client
@@ -176,9 +182,22 @@ importers:
 
   packages/local-discovery:
     dependencies:
+      '@veylo/core':
+        specifier: workspace:*
+        version: link:../core
       '@veylo/types':
         specifier: workspace:*
         version: link:../types
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.5
+      tsx:
+        specifier: ^4.19.0
+        version: 4.23.15
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
 
   packages/mcp-client:
     dependencies:

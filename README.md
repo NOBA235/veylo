@@ -22,8 +22,7 @@ Veylo is a capability an Alexa+ agent can call to turn an ambiguous request ("th
 | MCP server (Streamable HTTP, spec 2025-11-25), typed client, all 10 tools, planner loop with trace | Complete & verified passing official conformance suite |
 | Web UI (Next.js 15, React 19, Tailwind CSS, Echo Show simulation modal, inspectable trace) | Complete, builds cleanly (`next build`) |
 | AI Provider Abstraction (`@veylo/ai` supporting `rules`, `bedrock`, `gemini`, `openai`) | Complete & tested with automatic graceful offline fallback |
-| Amazon Bedrock Integration (AWS Builder Mini Challenge) | Complete: `BedrockRuntimeClient`, `ConverseCommand`, cross-region profiles, Zod validation |
-| Overpass/OSM local discovery & geocoding | Next up |
+| Overpass/OSM local discovery & geocoding (`@veylo/local-discovery`) | Complete: `OverpassPlaceSource`, `NominatimGeocoder`, `WebEvidenceProvider`, `CachedPlaceStore` |
 | Alexa+ voice simulation & polish | In progress |
 
 ## Quickstart

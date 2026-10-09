@@ -15,6 +15,7 @@
     "@veylo/agent": "workspace:*",
     "@veylo/ai": "workspace:*",
     "@veylo/core": "workspace:*",
+    "@veylo/local-discovery": "workspace:*",
     "@veylo/mcp-client": "workspace:*",
     "@veylo/types": "workspace:*",
     "clsx": "^2.1.1",

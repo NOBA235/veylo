@@ -1,7 +1,16 @@
 import { VeyloMcpClient } from "@veylo/mcp-client";
-import { createLoopbackCaller, createToolExecutor, createCoreServices, type ToolCaller } from "@veylo/core";
+import {
+  createLoopbackCaller,
+  createToolExecutor,
+  createCoreServices,
+  BraveSearchProvider,
+  type ToolCaller,
+  type Geocoder,
+  type GeoPoint,
+} from "@veylo/core";
 import { createAiAssists } from "@veylo/ai";
-import { makeCtx } from "@veylo/core/testing";
+import { makeCtx, FakeGeocoder, FakePlaceSource, FIXTURE_PLACES } from "@veylo/core/testing";
+import { NominatimGeocoder, OverpassPlaceSource, WebEvidenceProvider, CachedPlaceStore } from "@veylo/local-discovery";
 
 export type McpConnectionMode = "streamable-http" | "loopback-fallback";
 
@@ -28,9 +37,26 @@ export async function getToolCaller(): Promise<McpCallerInfo> {
     // Graceful fallback to verified in-process loopback MCP executor so UI demo is always reliable
     console.warn(`[Veylo Web] Remote MCP server at ${url} unreachable (${String(err)}). Using in-process MCP loopback executor.`);
     const ai = createAiAssists();
+    const realGeocoder = new NominatimGeocoder();
+    const fakeGeocoder = new FakeGeocoder();
+    const hybridGeocoder: Geocoder = {
+      async geocode(text: string): Promise<GeoPoint | null> {
+        const fake = await fakeGeocoder.geocode(text);
+        if (fake) return fake;
+        return realGeocoder.geocode(text);
+      },
+    };
+
+    const overpass = new OverpassPlaceSource();
+    const webSearch = process.env.BRAVE_SEARCH_API_KEY ? new BraveSearchProvider(process.env.BRAVE_SEARCH_API_KEY) : undefined;
+    const webEvidence = new WebEvidenceProvider({ webSearch });
+
     const ctx = makeCtx({
       identifyAssist: ai.identifyAssist,
       compareAssist: ai.compareAssist,
+      geocoder: hybridGeocoder,
+      placeSources: [new FakePlaceSource(FIXTURE_PLACES), overpass],
+      placeStore: new CachedPlaceStore({ initialPlaces: FIXTURE_PLACES }),
       evidenceProviders: [
         {
           name: "demo web listing",
@@ -49,6 +75,7 @@ export async function getToolCaller(): Promise<McpCallerInfo> {
                 ]
               : [],
         },
+        webEvidence,
       ],
       clock: () => new Date(),
     });

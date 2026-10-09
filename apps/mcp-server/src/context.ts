@@ -1,27 +1,37 @@
 import {
-  CatalogService, consoleLogger, createCoreServices, createToolExecutor, InMemoryEvidenceLedger, InMemoryPlaceStore,
-  BraveSearchProvider, VeyloError, type CoreContext, type Geocoder,
+  CatalogService, consoleLogger, createCoreServices, createToolExecutor, InMemoryEvidenceLedger,
+  BraveSearchProvider, type CoreContext, type Geocoder, type GeoPoint,
 } from "@veylo/core";
 import { createPgProductRepository, createPgShoppingListStore } from "@veylo/core/pg";
 import { createAiAssists } from "@veylo/ai";
-import { makeCtx } from "@veylo/core/testing";
+import { makeCtx, FakeGeocoder, FakePlaceSource, FIXTURE_PLACES } from "@veylo/core/testing";
+import { NominatimGeocoder, OverpassPlaceSource, WebEvidenceProvider, CachedPlaceStore } from "@veylo/local-discovery";
 import { createDb } from "@veylo/db";
 import type { ServerConfig } from "./config";
 
-/** Phase 7 supplies a real geocoder. Until then, only "lat,lon" locations resolve. */
-const noGeocoder: Geocoder = {
-  async geocode() {
-    throw new VeyloError("NOT_CONFIGURED", 'No geocoder is configured yet. Pass the location as "lat,lon".');
-  },
-};
-
 export function buildContext(config: ServerConfig) {
   const ai = createAiAssists({ logger: consoleLogger });
+  const realGeocoder = new NominatimGeocoder({ logger: consoleLogger });
+  const overpass = new OverpassPlaceSource({ logger: consoleLogger });
+  const webSearch = config.braveApiKey ? new BraveSearchProvider(config.braveApiKey) : undefined;
+  const webEvidence = new WebEvidenceProvider({ webSearch });
 
   if (config.demoMode) {
+    const fakeGeocoder = new FakeGeocoder();
+    const hybridGeocoder: Geocoder = {
+      async geocode(text: string): Promise<GeoPoint | null> {
+        const fake = await fakeGeocoder.geocode(text);
+        if (fake) return fake;
+        return realGeocoder.geocode(text);
+      },
+    };
+
     const demoCtx = makeCtx({
       identifyAssist: ai.identifyAssist,
       compareAssist: ai.compareAssist,
+      geocoder: hybridGeocoder,
+      placeSources: [new FakePlaceSource(FIXTURE_PLACES), overpass],
+      placeStore: new CachedPlaceStore({ initialPlaces: FIXTURE_PLACES }),
       evidenceProviders: [
         {
           name: "demo web listing",
@@ -40,6 +50,7 @@ export function buildContext(config: ServerConfig) {
                 ]
               : [],
         },
+        webEvidence,
       ],
       clock: () => new Date(),
     });
@@ -56,15 +67,13 @@ export function buildContext(config: ServerConfig) {
     catalog: new CatalogService(createPgProductRepository(db)),
     identifyAssist: ai.identifyAssist,
     compareAssist: ai.compareAssist,
-    // Phase 7 adds the Overpass place source and web-evidence providers. Until then discover_local_places
-    // reports NOT_CONFIGURED rather than returning made-up stores.
-    placeSources: [],
-    geocoder: noGeocoder,
-    placeStore: new InMemoryPlaceStore(),
+    placeSources: [overpass],
+    geocoder: realGeocoder,
+    placeStore: new CachedPlaceStore(),
     ledger: new InMemoryEvidenceLedger(),
-    evidenceProviders: [],
+    evidenceProviders: [webEvidence],
     shoppingLists: createPgShoppingListStore(db),
-    webSearch: config.braveApiKey ? new BraveSearchProvider(config.braveApiKey) : undefined,
+    webSearch,
     logger: consoleLogger,
   };
   return { ctx, handlers: createToolExecutor(createCoreServices(ctx), ctx.logger), close: () => pool.end(), ai };

@@ -147,3 +147,4 @@ test("Bedrock client initializes with explicit maxTokens and defaults", () => {
   assert.equal(cmpAssist.provider, "bedrock");
   assert.equal(cmpAssist.modelId, "us.anthropic.claude-sonnet-4-6");
 });
+
