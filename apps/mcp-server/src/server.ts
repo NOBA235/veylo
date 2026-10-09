@@ -1,7 +1,7 @@
 // MCP server construction with the official TypeScript SDK. Kept thin: every tool is registered from the
 // contract registry and delegates to the SDK-free executor in @veylo/core.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { SUPPORTED_PROTOCOL_VERSIONS } from "@modelcontextprotocol/sdk/types.js";
+import { SUPPORTED_PROTOCOL_VERSIONS, type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { ToolHandlers } from "@veylo/core";
 import { TOOL_NAMES, toolContracts } from "@veylo/types";
 import { inputShape, outputShape } from "./schema-shapes";
@@ -21,7 +21,7 @@ export function createMcpServer(handlers: ToolHandlers): McpServer {
         outputSchema: outputShape(name),
         annotations: TOOL_META[name].annotations,
       },
-      async (args: unknown) => handlers[name](args),
+      async (args: unknown): Promise<CallToolResult> => (await handlers[name](args)) as CallToolResult,
     );
   }
   return server;

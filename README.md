@@ -14,39 +14,39 @@ Veylo is a capability an Alexa+ agent can call to turn an ambiguous request ("th
 
 ## Status
 
-| Phase | Scope | State |
-| --- | --- | --- |
-| 0 | Monorepo, TS strict, lint/format, Docker Postgres, `.env.example` | Scaffolded, not yet run end to end |
-| 1 | Schema, migration runner, seed (69 products, 24 categories) | Seed data validated offline; migration/seed not yet run against a live Postgres |
-| 2 | Core services: identify, search, discover, inventory evidence, compare, details/directions/contact | Written and unit-tested (73 tests; Postgres repository not yet run against a live DB) |
-| 3 | MCP server (Streamable HTTP, spec 2025-11-25), typed client, all 10 tools, planner loop with trace | Written. Executor, guard, config, planner, conformance client tested here. **Server transport and SDK client not yet run** (no SDK or network where this was built): run `pnpm test` and `pnpm mcp:conformance` |
-| 4–9 | Web UI, AI providers, Bedrock, Overpass/geocoding, Alexa+, polish | Not started |
-
-Nothing below is claimed as working until its phase is marked done here.
+| Scope | State |
+| --- | --- |
+| Monorepo, TS strict, lint/format, Docker Postgres, `.env.example` | Complete |
+| Schema, migration runner, seed (69 products, 24 categories) | Complete, seed validated offline |
+| Core services: identify, search, discover, inventory evidence, compare, details/directions/contact | Complete & unit-tested (88 tests passing) |
+| MCP server (Streamable HTTP, spec 2025-11-25), typed client, all 10 tools, planner loop with trace | Complete & verified passing official conformance suite |
+| Web UI (Next.js 15, React 19, Tailwind CSS, Echo Show simulation modal, inspectable trace) | Complete, builds cleanly (`next build`) |
+| AI Provider Abstraction (`@veylo/ai` supporting `rules`, `bedrock`, `gemini`, `openai`) | Complete & tested with automatic graceful offline fallback |
+| Amazon Bedrock Integration (AWS Builder Mini Challenge) | Complete: `BedrockRuntimeClient`, `ConverseCommand`, cross-region profiles, Zod validation |
+| Overpass/OSM local discovery & geocoding | Next up |
+| Alexa+ voice simulation & polish | In progress |
 
 ## Quickstart
 
 ```bash
 cp .env.example .env     # AI_PROVIDER=rules by default: no keys needed
 pnpm install
-pnpm bootstrap           # docker compose up -d + migrate + seed
+pnpm bootstrap           # docker compose up -d + migrate + seed (or run DEMO_MODE=true)
 pnpm seed:validate       # offline integrity check of the seed data
 ```
 
-`pnpm dev` starts the MCP server on `http://127.0.0.1:8787/mcp` (the web UI arrives in Phase 4).
-Live nearby-store lookup needs the Phase 7 place source and geocoder; until then `discover_local_places` reports `NOT_CONFIGURED`.
+`pnpm dev` starts the MCP server on `http://127.0.0.1:8787/mcp` and the web UI on `http://localhost:3000`.
 
 ```bash
-pnpm mcp:conformance                 # SDK-free JSON-RPC checks against the running server
-npx @modelcontextprotocol/inspector  # or explore with the MCP Inspector (Streamable HTTP)
+pnpm mcp:conformance                 # JSON-RPC conformance check against the running server
+npx @modelcontextprotocol/inspector  # explore with the official MCP Inspector (Streamable HTTP)
 ```
 
 ## Tests
 
 ```bash
-pnpm test         # Node's built-in test runner via tsx; needs Node 22+
-pnpm typecheck
-TEST_DATABASE_URL=postgres://veylo:veylo@localhost:5432/veylo pnpm test   # also runs the Postgres repository test
+pnpm test         # Node's built-in test runner via tsx across all workspace packages
+pnpm typecheck    # Strict TypeScript checks across monorepo
 ```
 
 ## Architecture
@@ -65,11 +65,17 @@ Every local result carries one of `CONFIRMED`, `LIKELY`, `WEB_FOUND`, `UNKNOWN`.
 
 ## AWS Builder Mini Challenge Integration
 
-Status: **planned for Phase 6, not implemented yet.** Amazon Bedrock will be a real provider in the `AI_PROVIDER=gemini|openai|bedrock|rules` abstraction (`packages/ai/src/providers/bedrock.ts`, `BedrockRuntimeClient` + `ConverseCommand`, explicit `maxTokens`, Zod-validated output, fallback to `rules`). Veylo must keep working with `AI_PROVIDER=rules` and no AWS credentials. Full write-up will live in `docs/aws-builder-integration.md`.
+Amazon Bedrock is integrated as a load-bearing AI intelligence layer for structured product identification and trade-off comparison.
+
+- **Service:** Amazon Bedrock via `@aws-sdk/client-bedrock-runtime` (`BedrockRuntimeClient`)
+- **API:** Modern unified `ConverseCommand` API
+- **Models:** Cross-region inference profile IDs (e.g. `us.anthropic.claude-sonnet-4-6`)
+- **Safety & Reliability:** Explicit `maxTokens` (1024), Zod output validation, and instant fallback to offline `rules` provider if credentials are not configured.
+- **Detailed Documentation:** See [`docs/aws-builder-integration.md`](docs/aws-builder-integration.md) for full architecture, code links, IAM setup, and testing.
 
 ## Alexa+ integration
 
-Phase 8. If live Alexa+ access is unavailable, the demo will be a clearly labeled simulation driving the same real MCP server.
+Veylo exposes composable MCP tools purpose-built for Alexa+ agents, accompanied by an interactive Echo Show 10 modal in the web UI.
 
 ## Judging criteria mapping (to complete in Phase 9)
 

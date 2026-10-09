@@ -1,5 +1,6 @@
 import { VeyloMcpClient } from "@veylo/mcp-client";
 import { createLoopbackCaller, createToolExecutor, createCoreServices, type ToolCaller } from "@veylo/core";
+import { createAiAssists } from "@veylo/ai";
 import { makeCtx } from "@veylo/core/testing";
 
 export type McpConnectionMode = "streamable-http" | "loopback-fallback";
@@ -26,7 +27,10 @@ export async function getToolCaller(): Promise<McpCallerInfo> {
   } catch (err) {
     // Graceful fallback to verified in-process loopback MCP executor so UI demo is always reliable
     console.warn(`[Veylo Web] Remote MCP server at ${url} unreachable (${String(err)}). Using in-process MCP loopback executor.`);
+    const ai = createAiAssists();
     const ctx = makeCtx({
+      identifyAssist: ai.identifyAssist,
+      compareAssist: ai.compareAssist,
       evidenceProviders: [
         {
           name: "demo web listing",

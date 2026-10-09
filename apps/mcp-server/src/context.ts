@@ -3,6 +3,7 @@ import {
   BraveSearchProvider, VeyloError, type CoreContext, type Geocoder,
 } from "@veylo/core";
 import { createPgProductRepository, createPgShoppingListStore } from "@veylo/core/pg";
+import { createAiAssists } from "@veylo/ai";
 import { makeCtx } from "@veylo/core/testing";
 import { createDb } from "@veylo/db";
 import type { ServerConfig } from "./config";
@@ -15,8 +16,12 @@ const noGeocoder: Geocoder = {
 };
 
 export function buildContext(config: ServerConfig) {
+  const ai = createAiAssists({ logger: consoleLogger });
+
   if (config.demoMode) {
     const demoCtx = makeCtx({
+      identifyAssist: ai.identifyAssist,
+      compareAssist: ai.compareAssist,
       evidenceProviders: [
         {
           name: "demo web listing",
@@ -42,12 +47,15 @@ export function buildContext(config: ServerConfig) {
       ctx: demoCtx,
       handlers: createToolExecutor(createCoreServices(demoCtx), demoCtx.logger),
       close: async () => {},
+      ai,
     };
   }
 
   const { db, pool } = createDb();
   const ctx: CoreContext = {
     catalog: new CatalogService(createPgProductRepository(db)),
+    identifyAssist: ai.identifyAssist,
+    compareAssist: ai.compareAssist,
     // Phase 7 adds the Overpass place source and web-evidence providers. Until then discover_local_places
     // reports NOT_CONFIGURED rather than returning made-up stores.
     placeSources: [],
@@ -59,5 +67,5 @@ export function buildContext(config: ServerConfig) {
     webSearch: config.braveApiKey ? new BraveSearchProvider(config.braveApiKey) : undefined,
     logger: consoleLogger,
   };
-  return { ctx, handlers: createToolExecutor(createCoreServices(ctx), ctx.logger), close: () => pool.end() };
+  return { ctx, handlers: createToolExecutor(createCoreServices(ctx), ctx.logger), close: () => pool.end(), ai };
 }

@@ -1,7 +1,6 @@
 import "./env";
 import { SUPPORTED_PROTOCOL_VERSIONS } from "@modelcontextprotocol/sdk/types.js";
 import { consoleLogger } from "@veylo/core";
-import { resolveProviderName } from "@veylo/ai";
 import { loadConfig } from "./config";
 import { buildContext } from "./context";
 import { createApp } from "./http";
@@ -12,12 +11,9 @@ import { assertSpecSupport, REQUIRED_PROTOCOL_VERSION, SERVER_NAME, SERVER_VERSI
 assertSpecSupport(SUPPORTED_PROTOCOL_VERSIONS);
 
 const config = loadConfig(process.env);
-const { handlers, close } = buildContext(config);
+const { handlers, close, ai } = buildContext(config);
 
-const provider = resolveProviderName();
-if (provider !== "rules") {
-  consoleLogger.warn(`AI_PROVIDER=${provider} is set, but AI providers arrive in Phase 5/6; identification uses rules.`);
-}
+consoleLogger.info(`AI provider active: ${ai.provider}`);
 
 const app = createApp({
   createServer: () => createMcpServer(handlers),
