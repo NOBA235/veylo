@@ -1,0 +1,14 @@
+{
+  "name": "@veylo/mcp-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "@veylo/core": "workspace:*",
+    "@veylo/types": "workspace:*"
+  }
+}

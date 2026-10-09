@@ -1,0 +1,34 @@
+{
+  "name": "veylo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Veylo: turn ambiguous human requests into concrete real-world shopping actions. An Alexa+ capability exposed over MCP.",
+  "license": "MIT",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "bootstrap": "docker compose up -d && pnpm db:migrate && pnpm db:seed",
+    "dev": "pnpm -r --parallel --if-present --filter \"./apps/*\" dev",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @veylo/db migrate",
+    "db:seed": "pnpm --filter @veylo/db seed",
+    "seed:validate": "node packages/db/scripts/validate-seed.mjs",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r --if-present test",
+    "mcp:conformance": "pnpm --filter @veylo/mcp-server conformance"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.18.0"
+  }
+}

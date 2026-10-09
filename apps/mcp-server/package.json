@@ -1,0 +1,27 @@
+{
+  "name": "@veylo/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "conformance": "tsx src/conformance-cli.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test \"test/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "@veylo/ai": "workspace:*",
+    "@veylo/core": "workspace:*",
+    "@veylo/db": "workspace:*",
+    "@veylo/types": "workspace:*",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@veylo/mcp-client": "workspace:*"
+  }
+}
