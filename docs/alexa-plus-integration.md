@@ -190,3 +190,4 @@ The Veylo Web UI includes a built-in **Echo Show 10 Simulation Modal**:
 - **Scenario Toggle:** Easily switch between **Killer Demo** (USB-C adapter), **Second Demo** (PTFE plumber's tape), and **Current Search**.
 - **Interactive Voice Speech:** Unmute voice to hear spoken Alexa synthesis rendered with the browser's speech synthesis engine while the Echo Show light ring pulses in cyan.
 - **Inspectable Wire:** Toggle **View MCP Wire** to inspect the raw JSON-RPC 2.0 messages passing between the agent and the server.
+

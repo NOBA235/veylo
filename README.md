@@ -24,7 +24,7 @@ Veylo is a capability an Alexa+ agent can call to turn an ambiguous request ("th
 | AI Provider Abstraction (`@veylo/ai` supporting `rules`, `bedrock`, `gemini`, `openai`) | Complete & tested with automatic graceful offline fallback |
 | Overpass/OSM local discovery & geocoding (`@veylo/local-discovery`) | Complete: `OverpassPlaceSource`, `NominatimGeocoder`, `WebEvidenceProvider`, `CachedPlaceStore` |
 | Alexa+ voice simulation & capability guides | Complete: Echo Show 10 multimodal simulator, voice synthesis, MCP inspection, demo scripts |
-| Demo Polish & Final Hackathon Deliverables | Next up |
+| Demo Polish & Final Hackathon Deliverables | Complete |
 
 ## Quickstart
 
@@ -81,9 +81,34 @@ Veylo exposes composable MCP tools purpose-built for Alexa+ agents, accompanied 
 - **Live Demo Walkthrough Script:** [`docs/demo-script.md`](docs/demo-script.md) (killer demo & second demo step-by-step)
 - **3-Minute Video Submission Script:** [`docs/demo-video-script.md`](docs/demo-video-script.md) (timed screen & audio walkthrough)
 
-## Judging criteria mapping (to complete in Phase 9)
+## Hackathon Judging Criteria Mapping
 
-- **Tech implementation:** MCP 2025-11-25 + Streamable HTTP, Bedrock provider, real data, evidence model
-- **Design:** minimal UI, clarification flow, inspectable agent trace
-- **Potential impact:** people routinely lack the name for the thing they need
-- **Quality of idea:** UNKNOWN → ACTION composition, Alexa+ capability, AWS Builder layer
+- **Technical Implementation:**
+  - Real self-hosted Model Context Protocol server (spec 2025-11-25) using Streamable HTTP on port 8787.
+  - Amazon Bedrock integration via `@aws-sdk/client-bedrock-runtime` using `ConverseCommand` and cross-region profiles.
+  - Real OpenStreetMap / Overpass spatial queries and Nominatim geocoding in `@veylo/local-discovery`.
+  - Strict evidence-first inventory trust engine rejecting fabricated availability.
+- **Design & User Experience:**
+  - Clean Next.js 15 App Router UI with React 19 and Tailwind CSS.
+  - Ambient conversational experience with an interactive Echo Show 10 simulation modal and spoken voice synthesis.
+  - Transparent, inspectable bounded agent planner trace (max 8 steps, zero leaked private CoT).
+- **Potential Impact:**
+  - Eliminates the universal human frustration of knowing what physical object you need without knowing what it is called.
+  - Directly empowers ambient Alexa+ devices to become real-world shopping navigators rather than passive search engines.
+- **Quality of Idea & Originality:**
+  - **UNKNOWN → ACTION:** Orchestrates intent hypothesis, category deduction, store relevance, live local discovery, evidence verification, trade-off comparison, and concrete navigation.
+  - Stacked track excellence: Primary **Alexa+** capability combined with load-bearing **AWS Builder** Bedrock integration.
+
+## Documentation Index
+
+- Architecture Overview: [`docs/architecture.md`](docs/architecture.md)
+- MCP Tools Specification: [`docs/mcp-tools.md`](docs/mcp-tools.md)
+- AWS Builder Mini Challenge Integration: [`docs/aws-builder-integration.md`](docs/aws-builder-integration.md)
+- Alexa+ Capability & Architecture Guide: [`docs/alexa-plus-integration.md`](docs/alexa-plus-integration.md)
+- Evidence Trust Model: [`docs/evidence-model.md`](docs/evidence-model.md)
+- Live Demo Walkthrough Script: [`docs/demo-script.md`](docs/demo-script.md)
+- 3-Minute Hackathon Video Script: [`docs/demo-video-script.md`](docs/demo-video-script.md)
+- Platform & Product Feedback: [`docs/product-feedback.md`](docs/product-feedback.md)
+- Developer Friction Log: [`docs/friction-log.md`](docs/friction-log.md)
+- Feature Requests & Roadmap: [`docs/feature-requests.md`](docs/feature-requests.md)
+- Submission & Acceptance Checklist: [`docs/submission-checklist.md`](docs/submission-checklist.md)

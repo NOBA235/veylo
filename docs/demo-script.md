@@ -118,3 +118,4 @@ To prove Veylo is not hardcoded around a single cable or adapter:
    - Shows tool call inputs and structured outputs.
    - Shows confidence progression over time.
    - **Security / Honesty Check:** Notice that internal chain-of-thought is never leaked; only verifiable agent decisions and actions are logged.
+

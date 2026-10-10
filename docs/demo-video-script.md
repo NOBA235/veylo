@@ -23,3 +23,4 @@
 1. Use 1080p or 4K screen recording at 60fps.
 2. Enable speech audio in the Echo Show Preview so judges hear Alexa speaking the response.
 3. Keep the terminal visible momentarily to show the MCP server running on port 8787 and passing tests.
+
