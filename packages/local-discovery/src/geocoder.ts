@@ -92,3 +92,4 @@ export class NominatimGeocoder implements Geocoder {
     }
   }
 }
+

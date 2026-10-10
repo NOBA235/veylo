@@ -55,3 +55,4 @@ export class CachedPlaceStore implements PlaceStore {
     return this.places.size;
   }
 }
+

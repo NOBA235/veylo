@@ -23,7 +23,8 @@ Veylo is a capability an Alexa+ agent can call to turn an ambiguous request ("th
 | Web UI (Next.js 15, React 19, Tailwind CSS, Echo Show simulation modal, inspectable trace) | Complete, builds cleanly (`next build`) |
 | AI Provider Abstraction (`@veylo/ai` supporting `rules`, `bedrock`, `gemini`, `openai`) | Complete & tested with automatic graceful offline fallback |
 | Overpass/OSM local discovery & geocoding (`@veylo/local-discovery`) | Complete: `OverpassPlaceSource`, `NominatimGeocoder`, `WebEvidenceProvider`, `CachedPlaceStore` |
-| Alexa+ voice simulation & polish | In progress |
+| Alexa+ voice simulation & capability guides | Complete: Echo Show 10 multimodal simulator, voice synthesis, MCP inspection, demo scripts |
+| Demo Polish & Final Hackathon Deliverables | Next up |
 
 ## Quickstart
 
@@ -75,6 +76,10 @@ Amazon Bedrock is integrated as a load-bearing AI intelligence layer for structu
 ## Alexa+ integration
 
 Veylo exposes composable MCP tools purpose-built for Alexa+ agents, accompanied by an interactive Echo Show 10 modal in the web UI.
+
+- **Architecture & Capability Guide:** [`docs/alexa-plus-integration.md`](docs/alexa-plus-integration.md) (system prompts, MCP tool schemas, agent directives)
+- **Live Demo Walkthrough Script:** [`docs/demo-script.md`](docs/demo-script.md) (killer demo & second demo step-by-step)
+- **3-Minute Video Submission Script:** [`docs/demo-video-script.md`](docs/demo-video-script.md) (timed screen & audio walkthrough)
 
 ## Judging criteria mapping (to complete in Phase 9)
 
