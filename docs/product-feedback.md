@@ -50,3 +50,4 @@ This document compiles our feedback on what worked exceptionally well, where cur
 - **The Ambiguity Gap:** Over 60% of consumers looking for home repair parts, cables, fasteners, and tools do not know the technical or brand name of the item. Traditional search engines fail on queries like *"that little thing that connects my laptop to the TV"*.
 - **The Voice Decision Tree:** An ambient voice agent cannot read out 10 search results. It must identify the canonical product, ask at most one clarifying question, verify local store relevance, evaluate evidence, and recommend an immediate next action.
 - **Honest Evidence as a Core Brand Value:** Users trust Alexa when it is honest. Hallucinating that a local store has an item in stock when it doesn't damages user trust. Veylo's 4-tier evidence model (`CONFIRMED`, `LIKELY`, `WEB_FOUND`, `UNKNOWN`) sets a blueprint for trustworthy voice commerce.
+

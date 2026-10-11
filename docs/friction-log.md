@@ -90,3 +90,4 @@ Projects that require complex multi-container setup or paid cloud accounts frequ
   - `AI_PROVIDER=rules` uses fast, deterministic trigram and synonym matching without any API keys.
   - The web UI includes an automatic in-process fallback loopback client if the standalone MCP server process is not running.
 - Evaluators can clone the repo, run `pnpm install` and `pnpm dev`, and immediately experience the full product.
+

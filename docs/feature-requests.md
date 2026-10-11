@@ -63,3 +63,4 @@ A specialized capability for hardware, plumbing, and automotive fasteners where 
 ### Implementation Path
 - Measure bolt thread pitch, metric vs imperial thread, pipe diameter (e.g. 1/2" NPT vs 3/4" GHT) using on-device augmented reality reference cards or phone camera.
 - Map measured dimensions directly to `identify_product` constraints.
+
