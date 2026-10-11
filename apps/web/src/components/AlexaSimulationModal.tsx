@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { AssistantAvatar, type AssistantMode } from "@/components/AssistantAvatar";
 import {
   X,
   Radio,
@@ -56,6 +57,7 @@ export function AlexaSimulationModal({
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showMcpPayload, setShowMcpPayload] = useState(false);
   const [isSpeakingEnabled, setIsSpeakingEnabled] = useState(false);
+  const [assistantMode, setAssistantMode] = useState<AssistantMode>("idle");
 
   // Define scenarios
   const scenarios: Record<ScenarioKey, Scenario> = {
@@ -183,16 +185,37 @@ export function AlexaSimulationModal({
   const scenario = scenarios[selectedScenario];
 
   // Text to speech simulation
-  const speakText = (text: string) => {
-    if (!isSpeakingEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const speakText = (text: string, force = false) => {
+    if ((!isSpeakingEnabled && !force) || typeof window === "undefined" || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
+    setAssistantMode("thinking");
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1.02;
     utterance.pitch = 1.05;
-    utterance.onstart = () => setIsPlayingAudio(true);
-    utterance.onend = () => setIsPlayingAudio(false);
-    utterance.onerror = () => setIsPlayingAudio(false);
+    utterance.onstart = () => {
+      setIsPlayingAudio(true);
+      setAssistantMode("speaking");
+    };
+    utterance.onend = () => {
+      setIsPlayingAudio(false);
+      setAssistantMode("idle");
+    };
+    utterance.onerror = () => {
+      setIsPlayingAudio(false);
+      setAssistantMode("idle");
+    };
     window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleListening = () => {
+    if (assistantMode === "listening") {
+      setAssistantMode("thinking");
+      window.setTimeout(() => setAssistantMode((mode) => (mode === "thinking" ? "idle" : mode)), 900);
+      return;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    setIsPlayingAudio(false);
+    setAssistantMode("listening");
   };
 
   useEffect(() => {
@@ -243,10 +266,11 @@ export function AlexaSimulationModal({
                 const nextState = !isSpeakingEnabled;
                 setIsSpeakingEnabled(nextState);
                 if (nextState) {
-                  speakText(scenario.alexaSynthesis);
+                  speakText(scenario.alexaSynthesis, true);
                 } else if (typeof window !== "undefined" && "speechSynthesis" in window) {
                   window.speechSynthesis.cancel();
                   setIsPlayingAudio(false);
+                  setAssistantMode("idle");
                 }
               }}
               className={`p-2 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-colors ${
@@ -257,7 +281,7 @@ export function AlexaSimulationModal({
               title={isSpeakingEnabled ? "Voice speech enabled" : "Enable voice speech synthesis"}
             >
               {isSpeakingEnabled ? <Volume2 className="w-4 h-4 text-cyan-400" /> : <VolumeX className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isSpeakingEnabled ? "Voice Muted" : "Unmute Voice"}</span>
+              <span className="hidden sm:inline">{isSpeakingEnabled ? "Mute Voice" : "Unmute Voice"}</span>
             </button>
 
             <button
@@ -318,6 +342,27 @@ export function AlexaSimulationModal({
                 <span className="text-cyan-400 font-mono">10:42 AM</span>
                 <span>•</span>
                 <span className="text-slate-300">Austin 72°F</span>
+              </div>
+            </div>
+
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-cyan-900/50 bg-slate-950/55 px-4 py-3">
+              <AssistantAvatar mode={assistantMode} />
+              <div className="flex items-center gap-3">
+                <span className="hidden text-xs text-slate-400 sm:inline">
+                  Animated voice preview · input is simulated
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                    assistantMode === "listening"
+                      ? "border-rose-700 bg-rose-950/70 text-rose-200 hover:bg-rose-900"
+                      : "border-cyan-800 bg-cyan-950/70 text-cyan-200 hover:bg-cyan-900"
+                  }`}
+                  aria-pressed={assistantMode === "listening"}
+                >
+                  {assistantMode === "listening" ? "Finish listening" : "Simulate listening"}
+                </button>
               </div>
             </div>
 
