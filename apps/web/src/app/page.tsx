@@ -14,12 +14,15 @@ import { ShoppingListDrawer, type ShoppingItem } from "@/components/ShoppingList
 import { StoreModal } from "@/components/StoreModal";
 import { DirectionsModal } from "@/components/DirectionsModal";
 import { AlexaSimulationModal } from "@/components/AlexaSimulationModal";
-import { Sparkles } from "lucide-react";
+import type { AssistantMode } from "@/components/AssistantAvatar";
+import { Sparkles, Square, Volume2 } from "lucide-react";
 
 export default function Home() {
   const [agentResult, setAgentResult] = useState<AgentResult | null>(null);
   const [agentState, setAgentState] = useState<AgentState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [currentLocation, setCurrentLocation] = useState("Austin, TX");
 
   // Drawers and Modals
@@ -41,6 +44,14 @@ export default function Home() {
     mcp?: { mode: string; specVersion: string };
   }>({});
 
+  const assistantMode: AssistantMode = isLoading
+    ? "thinking"
+    : isSpeaking
+      ? "speaking"
+      : isListening
+        ? "listening"
+        : "idle";
+
   // Fetch system health on mount
   useEffect(() => {
     fetch("/api/health")
@@ -56,6 +67,9 @@ export default function Home() {
     urgency?: "today" | "this_week" | "online" | "unknown";
     compatibility?: string;
   }) => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+    setIsListening(false);
     setIsLoading(true);
     setAgentResult(null);
     setAgentState(null);
@@ -87,9 +101,28 @@ export default function Home() {
     }
   };
 
+  const handleSpeakAnswer = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window) || !agentResult?.answer) return;
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(agentResult.answer);
+    utterance.rate = 1;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+  };
+
   // Answer a clarification question
   const handleAnswerClarification = async (answer: string) => {
     if (!agentState) return;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    setIsSpeaking(false);
     setIsLoading(true);
 
     try {
@@ -258,6 +291,8 @@ export default function Home() {
           isLoading={isLoading}
           currentLocation={currentLocation}
           onLocationChange={setCurrentLocation}
+          assistantMode={assistantMode}
+          onListeningChange={setIsListening}
         />
 
         {/* Loading Spinner */}
@@ -291,10 +326,20 @@ export default function Home() {
                 <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 shrink-0 mt-0.5">
                   <Sparkles className="w-4 h-4 text-emerald-700" />
                 </div>
-                <div>
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                    Agent Finding & Synthesis
-                  </span>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      What I found
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSpeakAnswer}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-800"
+                    >
+                      {isSpeaking ? <Square className="h-3 w-3 fill-current" /> : <Volume2 className="h-3.5 w-3.5" />}
+                      {isSpeaking ? "Stop" : "Hear answer"}
+                    </button>
+                  </div>
                   <p className="text-sm sm:text-base font-medium text-slate-900 leading-relaxed">
                     {agentResult.answer}
                   </p>

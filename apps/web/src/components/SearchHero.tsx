@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Search, Mic, Image as ImageIcon, MapPin, CornerDownLeft, Sparkles } from "lucide-react";
 import type { Urgency } from "@veylo/types";
+import { AssistantAvatar, type AssistantMode } from "@/components/AssistantAvatar";
 
 interface SearchHeroProps {
   onSearch: (params: {
@@ -14,6 +15,8 @@ interface SearchHeroProps {
   isLoading: boolean;
   currentLocation: string;
   onLocationChange: (loc: string) => void;
+  assistantMode: AssistantMode;
+  onListeningChange: (listening: boolean) => void;
 }
 
 export function SearchHero({
@@ -21,17 +24,25 @@ export function SearchHero({
   isLoading,
   currentLocation,
   onLocationChange,
+  assistantMode,
+  onListeningChange,
 }: SearchHeroProps) {
   const [query, setQuery] = useState("");
   const [urgency, setUrgency] = useState<Urgency | undefined>("today");
   const [compatibility, setCompatibility] = useState<string>("");
   const [isListening, setIsListening] = useState(false);
+  const listeningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showLocationEdit, setShowLocationEdit] = useState(false);
   const [locInput, setLocInput] = useState(currentLocation);
+
+  useEffect(() => () => {
+    if (listeningTimer.current) clearTimeout(listeningTimer.current);
+  }, []);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!query.trim() || isLoading) return;
+    cancelListeningPreview();
     onSearch({
       message: query.trim(),
       location: currentLocation,
@@ -41,6 +52,7 @@ export function SearchHero({
   };
 
   const handleQuickPrompt = (promptText: string, defaultUrgency: Urgency = "today", defaultCompat?: string) => {
+    cancelListeningPreview();
     setQuery(promptText);
     setUrgency(defaultUrgency);
     if (defaultCompat) setCompatibility(defaultCompat);
@@ -52,16 +64,30 @@ export function SearchHero({
     });
   };
 
-  const toggleMic = () => {
+  const cancelListeningPreview = () => {
+    if (listeningTimer.current) {
+      clearTimeout(listeningTimer.current);
+      listeningTimer.current = null;
+    }
     if (isListening) {
       setIsListening(false);
+      onListeningChange(false);
+    }
+  };
+
+  const toggleMic = () => {
+    if (isListening) {
+      cancelListeningPreview();
       return;
     }
     setIsListening(true);
+    onListeningChange(true);
     // Simulate speech-to-text input after 1.5s
-    setTimeout(() => {
+    listeningTimer.current = setTimeout(() => {
       setQuery("I need that little thing that lets me connect my laptop to a TV. I don't know what it's called.");
       setIsListening(false);
+      onListeningChange(false);
+      listeningTimer.current = null;
     }, 1800);
   };
 
@@ -73,9 +99,12 @@ export function SearchHero({
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
           <span>Ambiguous Physical Shopping Capability</span>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight mb-2">
-          What are you trying to find?
-        </h1>
+        <div className="mb-2 flex items-center justify-center gap-3 sm:gap-4">
+          <AssistantAvatar mode={isListening ? "listening" : assistantMode} compact />
+          <h1 className="text-left text-2xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+            What are you trying to find?
+          </h1>
+        </div>
         <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
           Don&apos;t know the name? Don&apos;t know the store? Describe what it does or what it looks like.
         </p>
@@ -186,15 +215,20 @@ export function SearchHero({
               <button
                 type="button"
                 onClick={toggleMic}
+                disabled={isLoading}
                 className={`p-2 rounded-lg border transition-all ${
-                  isListening
+                  isLoading
+                    ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300"
+                    : isListening
                     ? "bg-red-50 border-red-300 text-red-600 animate-pulse"
                     : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                 }`}
-                title="Voice input simulation"
+                title="Voice preview · no audio is recorded"
+                aria-label={isListening ? "Stop listening preview" : "Start listening preview"}
               >
                 <Mic className="w-4 h-4" />
               </button>
+              <span className="-ml-1 text-[10px] text-slate-400">Preview</span>
 
               {/* Image Input (Feature flag preview) */}
               <button
