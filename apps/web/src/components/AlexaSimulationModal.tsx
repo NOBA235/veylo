@@ -1,18 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { AssistantAvatar, type AssistantMode } from "@/components/AssistantAvatar";
-import {
-  X,
-  Radio,
-  Volume2,
-  VolumeX,
-  Play,
-  ShieldCheck,
-  Navigation,
-  Phone,
-  Code2,
-} from "lucide-react";
+import { Headphones, Mic, Volume2, X } from "lucide-react";
 
 interface AlexaSimulationModalProps {
   isOpen: boolean;
@@ -23,562 +13,256 @@ interface AlexaSimulationModalProps {
   evidenceStatus?: string;
 }
 
-type ScenarioKey = "killer" | "tape" | "current";
+type ScenarioKey = "adapter" | "tape" | "current";
 
 interface Scenario {
-  id: ScenarioKey;
   label: string;
-  userPrompt: string;
+  prompt: string;
   product: string;
   category: string;
-  storeName: string;
-  distance: string;
-  evidenceStatus: "CONFIRMED" | "LIKELY" | "WEB_FOUND" | "UNKNOWN";
-  alexaClarification: string;
-  userClarificationAnswer: string;
-  alexaSynthesis: string;
-  mcpCalls: Array<{
-    turn: number;
-    tool: string;
-    input: Record<string, unknown>;
-    outputSummary: string;
-  }>;
+  status: string;
+  response: string;
+  isExample: boolean;
 }
+
+const EXAMPLES: Record<Exclude<ScenarioKey, "current">, Scenario> = {
+  adapter: {
+    label: "Laptop to TV",
+    prompt: "I need the little thing that connects my laptop to a TV.",
+    product: "USB-C to HDMI adapter",
+    category: "Video adapter",
+    status: "Stock not verified",
+    response:
+      "You may mean a USB-C to HDMI adapter. I can help find nearby places to check, but shelf stock needs to be confirmed.",
+    isExample: true,
+  },
+  tape: {
+    label: "Plumber’s tape",
+    prompt: "What’s the white tape plumbers wrap around pipe threads?",
+    product: "PTFE thread seal tape",
+    category: "Plumbing",
+    status: "Stock not verified",
+    response:
+      "That sounds like PTFE thread seal tape. I can help find a nearby store; current shelf stock isn’t verified.",
+    isExample: true,
+  },
+};
+
+const statusFor = (status?: string) => {
+  switch (status) {
+    case "CONFIRMED":
+      return "Stock confirmed";
+    case "LIKELY":
+      return "Online listing found · shelf stock unconfirmed";
+    case "WEB_FOUND":
+      return "Found online · local stock unconfirmed";
+    default:
+      return "Stock not verified";
+  }
+};
+
+const statusStyleFor = (status?: string) => {
+  switch (status) {
+    case "CONFIRMED":
+      return "bg-emerald-100 text-emerald-900";
+    case "LIKELY":
+      return "bg-amber-100 text-amber-900";
+    case "WEB_FOUND":
+      return "bg-blue-100 text-blue-900";
+    default:
+      return "bg-slate-200 text-slate-700";
+  }
+};
 
 export function AlexaSimulationModal({
   isOpen,
   onClose,
-  product = "USB-C to HDMI adapter",
-  category = "video adapters",
-  storeName = "Fixture Electronics",
-  evidenceStatus = "LIKELY",
+  product,
+  category,
+  storeName,
+  evidenceStatus,
 }: AlexaSimulationModalProps) {
-  const [selectedScenario, setSelectedScenario] = useState<ScenarioKey>("killer");
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [showMcpPayload, setShowMcpPayload] = useState(false);
-  const [isSpeakingEnabled, setIsSpeakingEnabled] = useState(false);
+  const [selectedScenario, setSelectedScenario] = useState<ScenarioKey>("adapter");
   const [assistantMode, setAssistantMode] = useState<AssistantMode>("idle");
 
-  // Define scenarios
-  const scenarios: Record<ScenarioKey, Scenario> = {
-    killer: {
-      id: "killer",
-      label: "Killer Demo (Laptop to TV)",
-      userPrompt: "Alexa, I need that little thing that lets me plug my laptop into the TV. I don't know what it's called.",
-      product: "USB-C to HDMI adapter",
-      category: "video adapters",
-      storeName: "Fixture Electronics",
-      distance: "0.6 km away",
-      evidenceStatus: "LIKELY",
-      alexaClarification: "You probably mean a USB-C to HDMI adapter. Do you need one nearby today, or are you okay ordering online?",
-      userClarificationAnswer: "Yeah, I need it nearby today.",
-      alexaSynthesis:
-        "I found Fixture Electronics about 600 meters away. They have an online listing for a compatible adapter, but shelf inventory is not confirmed. Would you like directions or their phone number?",
-      mcpCalls: [
-        {
-          turn: 1,
-          tool: "identify_product",
-          input: {
-            description: "I need that little thing that lets me plug my laptop into the TV. I don't know what it's called.",
-          },
-          outputSummary: "product: 'USB-C to HDMI adapter', confidence: 0.91, category: 'video adapters'",
-        },
-        {
-          turn: 2,
-          tool: "discover_local_places",
-          input: {
-            product: "USB-C to HDMI adapter",
-            location: "Austin, TX",
-            storeCategories: ["electronics", "computer"],
-          },
-          outputSummary: "Discovered 5 nearby electronics stores (Fixture Electronics: 0.55 km)",
-        },
-        {
-          turn: 3,
-          tool: "check_local_inventory",
-          input: {
-            storeId: "osm:node/1",
-            product: "USB-C to HDMI adapter",
-          },
-          outputSummary: "status: LIKELY, confidence: 0.72 (Online listing found; shelf stock not verified)",
-        },
-      ],
-    },
-    tape: {
-      id: "tape",
-      label: "Second Demo (Plumber's Tape)",
-      userPrompt: "Alexa, I need that white tape plumbers wrap around pipe threads to stop leaks.",
-      product: "PTFE thread seal tape",
-      category: "plumbing consumables",
-      storeName: "Fixture Hardware",
-      distance: "0.4 km away",
-      evidenceStatus: "UNKNOWN",
-      alexaClarification: "That is called PTFE thread seal tape. Do you need a roll nearby today?",
-      userClarificationAnswer: "Yes, I have a leak right now.",
-      alexaSynthesis:
-        "Fixture Hardware is 400 meters away on Main St. They are classified as a hardware store which routinely stocks plumbing tape, but current shelf stock is unverified. Should I show directions?",
-      mcpCalls: [
-        {
-          turn: 1,
-          tool: "identify_product",
-          input: {
-            description: "white tape plumbers wrap around pipe threads to stop leaks",
-          },
-          outputSummary: "product: 'PTFE thread seal tape', confidence: 0.94, category: 'plumbing consumables'",
-        },
-        {
-          turn: 2,
-          tool: "discover_local_places",
-          input: {
-            product: "PTFE thread seal tape",
-            location: "Austin, TX",
-            storeCategories: ["hardware", "plumbing_supplies"],
-          },
-          outputSummary: "Discovered 4 hardware/plumbing retailers nearby",
-        },
-        {
-          turn: 3,
-          tool: "check_local_inventory",
-          input: {
-            storeId: "osm:node/4",
-            product: "PTFE thread seal tape",
-          },
-          outputSummary: "status: UNKNOWN, confidence: 0.25 (Hardware store fit 1.0; zero stock evidence fabricated)",
-        },
-      ],
-    },
-    current: {
-      id: "current",
-      label: "Current Search Result",
-      userPrompt: `Alexa, help me find a ${product}.`,
-      product: product,
-      category: category,
-      storeName: storeName,
-      distance: "Nearby",
-      evidenceStatus: (evidenceStatus as Scenario["evidenceStatus"]) || "LIKELY",
-      alexaClarification: `You probably mean a ${product}. Do you need one nearby today?`,
-      userClarificationAnswer: "Yes, nearby today.",
-      alexaSynthesis: `I found ${storeName}. Current evidence status is ${evidenceStatus}. Would you like directions or contact info?`,
-      mcpCalls: [
-        {
-          turn: 1,
-          tool: "identify_product",
-          input: { description: product },
-          outputSummary: `product: '${product}', category: '${category}'`,
-        },
-        {
-          turn: 2,
-          tool: "discover_local_places",
-          input: { product, location: "Austin, TX" },
-          outputSummary: `Found local retailers for '${category}'`,
-        },
-        {
-          turn: 3,
-          tool: "check_local_inventory",
-          input: { storeName, product },
-          outputSummary: `status: ${evidenceStatus}`,
-        },
-      ],
-    },
+  const hasCurrentResult = Boolean(product);
+  const currentScenario: Scenario = {
+    label: "Current result",
+    prompt: product ? `Help me find a ${product}.` : "Your latest product search will appear here.",
+    product: product ?? "No search yet",
+    category: category ?? "Product match",
+    status: statusFor(evidenceStatus),
+    response: product
+      ? storeName
+        ? `I found ${storeName} as a nearby place to check. ${statusFor(evidenceStatus)}. Would you like to hear the next step?`
+        : `I found a match for ${product}. ${statusFor(evidenceStatus)}. Would you like help finding a nearby place?`
+      : "Try one of the sample requests to preview the conversation.",
+    isExample: false,
   };
 
-  const scenario = scenarios[selectedScenario];
+  const scenario = selectedScenario === "current" ? currentScenario : EXAMPLES[selectedScenario];
 
-  // Text to speech simulation
-  const speakText = (text: string, force = false) => {
-    if ((!isSpeakingEnabled && !force) || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const speakResponse = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     setAssistantMode("thinking");
-    const utterance = new SpeechSynthesisUtterance(text);
+    const utterance = new SpeechSynthesisUtterance(scenario.response);
     utterance.rate = 1.02;
     utterance.pitch = 1.05;
-    utterance.onstart = () => {
-      setIsPlayingAudio(true);
-      setAssistantMode("speaking");
-    };
-    utterance.onend = () => {
-      setIsPlayingAudio(false);
-      setAssistantMode("idle");
-    };
-    utterance.onerror = () => {
-      setIsPlayingAudio(false);
-      setAssistantMode("idle");
-    };
+    utterance.onstart = () => setAssistantMode("speaking");
+    utterance.onend = () => setAssistantMode("idle");
+    utterance.onerror = () => setAssistantMode("idle");
     window.speechSynthesis.speak(utterance);
   };
 
-  const toggleListening = () => {
+  const toggleListeningPreview = () => {
     if (assistantMode === "listening") {
       setAssistantMode("thinking");
-      window.setTimeout(() => setAssistantMode((mode) => (mode === "thinking" ? "idle" : mode)), 900);
+      window.setTimeout(() => setAssistantMode((mode) => (mode === "thinking" ? "idle" : mode)), 800);
       return;
     }
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
-    setIsPlayingAudio(false);
     setAssistantMode("listening");
   };
 
+  const chooseScenario = (key: ScenarioKey) => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    setAssistantMode("idle");
+    setSelectedScenario(key);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSelectedScenario(product ? "current" : "adapter");
+    setAssistantMode("idle");
+  }, [isOpen, product]);
+
   useEffect(() => {
     return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
+      if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
     };
   }, []);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
-      <div className="bg-slate-900 text-white rounded-3xl max-w-4xl w-full shadow-2xl border border-slate-800 overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
-        {/* Echo Show Header Bezel */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
-          <div className="flex items-center gap-3">
-            {/* Alexa Pulsating Ring */}
-            <div className="relative flex items-center justify-center">
-              <div
-                className={`w-4 h-4 rounded-full transition-all duration-300 ${
-                  isPlayingAudio
-                    ? "bg-cyan-400 ring-4 ring-cyan-500/50 scale-110 shadow-[0_0_15px_rgba(34,211,238,0.9)]"
-                    : "bg-cyan-500 ring-2 ring-cyan-500/30"
-                }`}
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm tracking-wide text-cyan-200">
-                  Echo Show 10 • Alexa+ Voice Agent Simulation
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800">
-                  MCP Streamable HTTP
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Demonstrating how an Alexa+ agent invokes Veylo MCP capabilities to turn unknown intent into real action
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Audio Toggle */}
-            <button
-              onClick={() => {
-                const nextState = !isSpeakingEnabled;
-                setIsSpeakingEnabled(nextState);
-                if (nextState) {
-                  speakText(scenario.alexaSynthesis, true);
-                } else if (typeof window !== "undefined" && "speechSynthesis" in window) {
-                  window.speechSynthesis.cancel();
-                  setIsPlayingAudio(false);
-                  setAssistantMode("idle");
-                }
-              }}
-              className={`p-2 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-colors ${
-                isSpeakingEnabled
-                  ? "bg-cyan-950/80 text-cyan-300 border-cyan-700 hover:bg-cyan-900"
-                  : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"
-              }`}
-              title={isSpeakingEnabled ? "Voice speech enabled" : "Enable voice speech synthesis"}
-            >
-              {isSpeakingEnabled ? <Volume2 className="w-4 h-4 text-cyan-400" /> : <VolumeX className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isSpeakingEnabled ? "Mute Voice" : "Unmute Voice"}</span>
-            </button>
-
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Preset Selector Bar */}
-        <div className="px-6 py-2.5 bg-slate-950/60 border-b border-slate-800/80 flex items-center justify-between gap-2 overflow-x-auto">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-            <span>Scenario:</span>
-            {(["killer", "tape", "current"] as ScenarioKey[]).map((key) => (
-              <button
-                key={key}
-                onClick={() => {
-                  setSelectedScenario(key);
-                }}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                  selectedScenario === key
-                    ? "bg-cyan-600 text-white shadow-sm"
-                    : "bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/60"
-                }`}
-              >
-                {scenarios[key].label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowMcpPayload(!showMcpPayload)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-colors ${
-                showMcpPayload
-                  ? "bg-emerald-950/80 text-emerald-300 border-emerald-700"
-                  : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"
-              }`}
-            >
-              <Code2 className="w-3.5 h-3.5" />
-              <span>{showMcpPayload ? "Hide MCP Wire" : "View MCP Wire"}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Main Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
-          {/* Echo Show 10 Multimodal Display Canvas */}
-          <div className="rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950/30 p-5 border border-slate-800 shadow-inner relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
-
-            {/* Echo Show UI Top Bar */}
-            <div className="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800/80 pb-3 mb-4">
-              <span className="font-mono text-slate-300">Echo Show 10 Screen Display</span>
-              <div className="flex items-center gap-3">
-                <span className="text-cyan-400 font-mono">10:42 AM</span>
-                <span>•</span>
-                <span className="text-slate-300">Austin 72°F</span>
-              </div>
-            </div>
-
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-cyan-900/50 bg-slate-950/55 px-4 py-3">
-              <AssistantAvatar mode={assistantMode} />
-              <div className="flex items-center gap-3">
-                <span className="hidden text-xs text-slate-400 sm:inline">
-                  Animated voice preview · input is simulated
-                </span>
-                <button
-                  type="button"
-                  onClick={toggleListening}
-                  className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
-                    assistantMode === "listening"
-                      ? "border-rose-700 bg-rose-950/70 text-rose-200 hover:bg-rose-900"
-                      : "border-cyan-800 bg-cyan-950/70 text-cyan-200 hover:bg-cyan-900"
-                  }`}
-                  aria-pressed={assistantMode === "listening"}
-                >
-                  {assistantMode === "listening" ? "Finish listening" : "Simulate listening"}
-                </button>
-              </div>
-            </div>
-
-            {/* Echo Show Multimodal Product Card */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-              <div className="md:col-span-2 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                    {scenario.category}
-                  </span>
-                  <span
-                    className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
-                      scenario.evidenceStatus === "CONFIRMED"
-                        ? "bg-emerald-950 text-emerald-300 border-emerald-800"
-                        : scenario.evidenceStatus === "LIKELY"
-                          ? "bg-blue-950 text-blue-300 border-blue-800"
-                          : scenario.evidenceStatus === "WEB_FOUND"
-                            ? "bg-amber-950 text-amber-300 border-amber-800"
-                            : "bg-slate-800 text-slate-400 border-slate-700"
-                    }`}
-                  >
-                    Inventory: {scenario.evidenceStatus}
-                  </span>
-                </div>
-
-                <h3 className="text-xl font-bold text-white tracking-tight">{scenario.product}</h3>
-
-                <p className="text-sm text-slate-300">
-                  Available at <strong className="text-cyan-300">{scenario.storeName}</strong> ({scenario.distance})
-                </p>
-
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  {scenario.evidenceStatus === "CONFIRMED"
-                    ? "Verified in-stock shelf evidence observed in the last 24h."
-                    : scenario.evidenceStatus === "LIKELY"
-                      ? "Store website listing matches this product. Current in-store shelf stock is not confirmed."
-                      : "Store type matches relevance, but no shelf stock evidence is claimed or fabricated."}
-                </p>
-              </div>
-
-              {/* Action Buttons on Screen */}
-              <div className="space-y-2 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-                <button
-                  onClick={() => alert(`Simulated Echo Show Action: Navigating to ${scenario.storeName}`)}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs transition-colors"
-                >
-                  <Navigation className="w-3.5 h-3.5" />
-                  <span>Show Directions</span>
-                </button>
-                <button
-                  onClick={() => alert(`Simulated Echo Show Action: Dialing ${scenario.storeName}`)}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-700 transition-colors"
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>Call to Confirm Stock</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Simulated Alexa+ Dialogue Flow */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-              <span>Turn-by-Turn Voice & MCP Interaction Flow</span>
-              <span className="text-[11px] font-normal text-slate-500">
-                Click any turn to replay voice response
-              </span>
-            </h4>
-
-            {/* Turn 1: Initial Prompt */}
-            <div className="space-y-2">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300 shrink-0">
-                  U
-                </div>
-                <div className="bg-slate-800/90 rounded-2xl rounded-tl-sm px-4 py-3 text-slate-200 text-sm max-w-xl border border-slate-700/60 shadow-sm">
-                  <span className="text-[10px] text-slate-400 block mb-1 font-mono uppercase tracking-wider">
-                    Turn 1 • Ambiguous Voice Speech
-                  </span>
-                  &ldquo;{scenario.userPrompt}&rdquo;
-                </div>
-              </div>
-
-              {/* MCP Tool Call 1 */}
-              <div className="ml-11 p-3 rounded-xl bg-slate-950 border border-cyan-900/40 text-xs text-cyan-300 flex items-start gap-2.5">
-                <Radio className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 font-mono">
-                    <span className="text-slate-400">Alexa+ calls MCP:</span>
-                    <strong className="text-cyan-200">identify_product()</strong>
-                  </div>
-                  <div className="text-[11px] text-slate-400 font-mono">
-                    Output: {scenario.mcpCalls[0]?.outputSummary}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Turn 2: Clarification & Confirmation */}
-            <div className="space-y-2">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-cyan-600 flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-md">
-                  A+
-                </div>
-                <div className="bg-cyan-950/40 border border-cyan-800/60 rounded-2xl rounded-tl-sm px-4 py-3 text-cyan-100 text-sm max-w-xl space-y-1.5 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-cyan-400 font-mono uppercase tracking-wider flex items-center gap-1">
-                      <Volume2 className="w-3 h-3" /> Alexa+ Agent Response
-                    </span>
-                    <button
-                      onClick={() => speakText(scenario.alexaClarification)}
-                      className="text-[10px] text-cyan-400 hover:text-cyan-200 flex items-center gap-1 font-mono underline"
-                    >
-                      <Play className="w-2.5 h-2.5" /> Play Voice
-                    </button>
-                  </div>
-                  <p className="leading-relaxed">&ldquo;{scenario.alexaClarification}&rdquo;</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300 shrink-0">
-                  U
-                </div>
-                <div className="bg-slate-800/90 rounded-2xl rounded-tl-sm px-4 py-2.5 text-slate-200 text-sm max-w-xl border border-slate-700/60 shadow-sm">
-                  <span className="text-[10px] text-slate-400 block mb-1 font-mono uppercase tracking-wider">
-                    Turn 2 • User Clarification
-                  </span>
-                  &ldquo;{scenario.userClarificationAnswer}&rdquo;
-                </div>
-              </div>
-
-              {/* MCP Tool Call 2 & 3 */}
-              <div className="ml-11 p-3 rounded-xl bg-slate-950 border border-cyan-900/40 text-xs text-cyan-300 flex items-start gap-2.5">
-                <Radio className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 font-mono">
-                    <span className="text-slate-400">Alexa+ calls MCP:</span>
-                    <strong className="text-cyan-200">discover_local_places()</strong> +{" "}
-                    <strong className="text-cyan-200">check_local_inventory()</strong>
-                  </div>
-                  <div className="text-[11px] text-slate-400 font-mono">
-                    Evidence: {scenario.mcpCalls[2]?.outputSummary}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Turn 3: Synthesis & Action */}
-            <div className="space-y-2">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-cyan-600 flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-md">
-                  A+
-                </div>
-                <div className="bg-cyan-950/40 border border-cyan-800/60 rounded-2xl rounded-tl-sm px-4 py-3 text-cyan-100 text-sm max-w-xl space-y-1.5 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-cyan-400 font-mono uppercase tracking-wider flex items-center gap-1">
-                      <Volume2 className="w-3 h-3" /> Turn 3 • Alexa+ Action Recommendation
-                    </span>
-                    <button
-                      onClick={() => speakText(scenario.alexaSynthesis)}
-                      className="text-[10px] text-cyan-400 hover:text-cyan-200 flex items-center gap-1 font-mono underline"
-                    >
-                      <Play className="w-2.5 h-2.5" /> Play Voice
-                    </button>
-                  </div>
-                  <p className="leading-relaxed">&ldquo;{scenario.alexaSynthesis}&rdquo;</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Collapsible MCP Wire Inspector */}
-          {showMcpPayload && (
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
-              <div className="flex items-center justify-between text-slate-400 border-b border-slate-800 pb-2">
-                <span className="font-semibold text-emerald-400 flex items-center gap-1.5">
-                  <Radio className="w-3.5 h-3.5" /> Live Model Context Protocol Payload
-                </span>
-                <span className="text-[10px] text-slate-500">Streamable HTTP • Port 8787</span>
-              </div>
-              <pre className="text-slate-300 text-[11px] overflow-x-auto p-3 bg-slate-900 rounded-xl border border-slate-800 leading-normal">
-{JSON.stringify(
-  {
-    jsonrpc: "2.0",
-    id: "alexa-turn-1",
-    method: "tools/call",
-    params: {
-      name: "identify_product",
-      arguments: scenario.mcpCalls[0]?.input,
-    },
-  },
-  null,
-  2,
-)}
-              </pre>
-            </div>
-          )}
-        </div>
-
-        {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-slate-800 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>
-              <strong>Amazon Developer Hackathon:</strong> Alexa+ capability verified against live MCP contracts & Bedrock AI
-            </span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6">
+      <section
+        aria-labelledby="voice-preview-title"
+        aria-modal="true"
+        role="dialog"
+        className="my-auto flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-[#f8fafc] text-slate-900 shadow-2xl"
+      >
+        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-7">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-cyan-700">Veylo</p>
+            <h2 id="voice-preview-title" className="mt-0.5 text-lg font-semibold tracking-tight">
+              Voice preview
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="w-full sm:w-auto px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium transition-colors"
+            aria-label="Close voice preview"
+            className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
           >
-            Close Echo Show Preview
+            <X className="h-5 w-5" />
           </button>
+        </header>
+
+        <div className="overflow-y-auto p-5 sm:p-7">
+          <p className="mb-4 text-sm text-slate-600">Choose a request to see how Veylo could answer.</p>
+
+          <div className="mb-5 flex flex-wrap gap-2" aria-label="Preview examples">
+            {(["adapter", "tape"] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => chooseScenario(key)}
+                aria-pressed={selectedScenario === key}
+                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                  selectedScenario === key
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                }`}
+              >
+                {EXAMPLES[key].label}
+              </button>
+            ))}
+            {hasCurrentResult && (
+              <button
+                type="button"
+                onClick={() => chooseScenario("current")}
+                aria-pressed={selectedScenario === "current"}
+                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                  selectedScenario === "current"
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                }`}
+              >
+                Current result
+              </button>
+            )}
+          </div>
+
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between gap-4 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 px-5 py-5 sm:px-7">
+              <AssistantAvatar mode={assistantMode} />
+              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] text-slate-200">
+                {scenario.isExample ? "Sample preview" : "From your search"}
+              </span>
+            </div>
+
+            <div className="space-y-4 p-5 sm:p-7">
+              <div className="ml-auto max-w-[90%] rounded-2xl rounded-tr-sm bg-slate-100 px-4 py-3 text-sm leading-relaxed text-slate-700">
+                {scenario.prompt}
+              </div>
+
+              <div className="max-w-[95%] rounded-2xl rounded-tl-sm border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-sm leading-relaxed text-slate-800">
+                {scenario.response}
+              </div>
+
+              <div className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Possible match</p>
+                  <p className="mt-1 font-semibold text-slate-900">{scenario.product}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{scenario.category}</p>
+                </div>
+                <span className={`max-w-[52%] rounded-full px-3 py-1 text-right text-[11px] font-medium leading-snug ${scenario.isExample ? "bg-slate-200 text-slate-700" : statusStyleFor(evidenceStatus)}`}>
+                  {scenario.status}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={speakResponse}
+                  className="inline-flex items-center gap-2 rounded-xl bg-cyan-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-cyan-800"
+                >
+                  <Volume2 className="h-4 w-4" />
+                  Hear response
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleListeningPreview}
+                  aria-pressed={assistantMode === "listening"}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
+                    assistantMode === "listening"
+                      ? "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <Mic className="h-4 w-4" />
+                  {assistantMode === "listening" ? "Stop preview" : "Preview listening"}
+                </button>
+                <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 sm:ml-auto">
+                  <Headphones className="h-3.5 w-3.5" />
+                  Listening is animated; no audio is recorded
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
