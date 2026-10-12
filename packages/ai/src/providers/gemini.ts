@@ -28,7 +28,7 @@ export class GeminiIdentifyAssist implements IdentifyAssist {
 
   constructor(options: GeminiProviderOptions = {}) {
     this.apiKey = options.apiKey ?? process.env.GEMINI_API_KEY ?? "";
-    this.modelId = options.modelId ?? process.env.GEMINI_MODEL_ID ?? "gemini-2.5-flash";
+    this.modelId = options.modelId ?? process.env.GEMINI_MODEL_ID ?? "gemini-1.5-flash";
     if (!this.apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
@@ -75,7 +75,7 @@ export class GeminiCompareAssist implements CompareAssist {
 
   constructor(options: GeminiProviderOptions = {}) {
     this.apiKey = options.apiKey ?? process.env.GEMINI_API_KEY ?? "";
-    this.modelId = options.modelId ?? process.env.GEMINI_MODEL_ID ?? "gemini-2.5-flash";
+    this.modelId = options.modelId ?? process.env.GEMINI_MODEL_ID ?? "gemini-1.5-flash";
     if (!this.apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
