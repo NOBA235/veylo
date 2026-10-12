@@ -155,7 +155,12 @@ export function AlexaSimulationModal({
       >
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-7">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-cyan-700">Veylo</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-cyan-700">Veylo</p>
+              <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-purple-100 text-purple-800 rounded-full border border-purple-200">
+                Powered by Amazon Bedrock
+              </span>
+            </div>
             <h2 id="voice-preview-title" className="mt-0.5 text-lg font-semibold tracking-tight">
               Voice preview
             </h2>

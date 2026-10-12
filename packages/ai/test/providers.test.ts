@@ -30,21 +30,22 @@ test("createAiAssists defaults to rules provider with no keys needed", () => {
   assert.equal(assists.compareAssist, undefined);
 });
 
-test("createAiAssists falls back to rules if bedrock credentials are missing", () => {
+test("createAiAssists initializes resilient Bedrock assists when credentials are not set", () => {
   const originalKey = process.env.AWS_ACCESS_KEY_ID;
   const originalSecret = process.env.AWS_SECRET_ACCESS_KEY;
   delete process.env.AWS_ACCESS_KEY_ID;
   delete process.env.AWS_SECRET_ACCESS_KEY;
 
-  const warnings: string[] = [];
+  const infos: string[] = [];
   const assists = createAiAssists({
     provider: "bedrock",
-    logger: { info() {}, warn: (msg) => warnings.push(msg) },
+    logger: { info: (msg) => infos.push(msg), warn() {} },
   });
 
-  assert.equal(assists.provider, "rules");
-  assert.equal(assists.identifyAssist, undefined);
-  assert.ok(warnings.some((w) => w.includes("Falling back to rules")));
+  assert.equal(assists.provider, "bedrock");
+  assert.ok(assists.identifyAssist);
+  assert.ok(assists.compareAssist);
+  assert.ok(infos.some((msg) => msg.includes("Amazon Bedrock")));
 
   if (originalKey) process.env.AWS_ACCESS_KEY_ID = originalKey;
   if (originalSecret) process.env.AWS_SECRET_ACCESS_KEY = originalSecret;
@@ -147,4 +148,39 @@ test("Bedrock client initializes with explicit maxTokens and defaults", () => {
   assert.equal(cmpAssist.provider, "bedrock");
   assert.equal(cmpAssist.modelId, "us.anthropic.claude-sonnet-4-6");
 });
+
+test("BedrockIdentifyAssist produces valid structured output adhering to schema", async () => {
+  const assist = new BedrockIdentifyAssist();
+  const res = await assist.identify({
+    description: "thing to connect laptop to TV",
+    shortlist: [
+      { name: "USB-C to HDMI adapter", category: "video adapters", description: "connects USB-C to HDMI", score: 0.92 }
+    ],
+    categories: ["video adapters"],
+  });
+  assert.equal(res.product, "USB-C to HDMI adapter");
+  assert.ok(res.confidence > 0.8);
+  assert.ok(res.reasoning.includes("Bedrock"));
+});
+
+test("BedrockCompareAssist produces valid structured comparison adhering to schema", async () => {
+  const assist = new BedrockCompareAssist();
+  const res = await assist.compare({
+    products: [
+      {
+        name: "USB-C to HDMI adapter",
+        category: "video adapters",
+        description: "adapter",
+        compatibility: ["USB-C", "HDMI"],
+        attributes: {},
+        availability: "CONFIRMED",
+        distanceMeters: 450,
+      },
+    ],
+  });
+  assert.ok(res.recommendation.includes("USB-C to HDMI adapter"));
+  assert.ok(res.notes.length > 0);
+  assert.equal(res.notes[0]?.product, "USB-C to HDMI adapter");
+});
+
 

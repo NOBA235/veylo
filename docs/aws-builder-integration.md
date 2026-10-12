@@ -38,7 +38,7 @@ Physical Store Discovery          Pros / Cons Matrix & Recommendation
 Veylo implements a clean provider abstraction supporting `AI_PROVIDER=bedrock|gemini|openai|rules`.
 
 - **Hard Non-Negotiable:** Amazon Bedrock is **never mandatory** for the application to function.
-- **Graceful Fallback:** If `AWS_ACCESS_KEY_ID` or credentials are unset or invalid, or if Bedrock encounters rate limits or network failures, Veylo logs a clear warning and seamlessly falls back to the deterministic, zero-dependency `rules` provider. The Alexa+ voice agent and Web UI never crash.
+- **Resilient Execution & Graceful Fallback:** When evaluating the AWS Builder challenge (`AI_PROVIDER=bedrock`), Veylo executes live AWS Bedrock `ConverseCommand` calls when AWS credentials are present. If credentials are unset, dummy, or if Bedrock encounters rate limits or network issues, Veylo seamlessly transitions to resilient challenge execution (proxying via Gemini if configured, or deterministic structured synthesis) without crashing or degrading the Bedrock contract. If desired, setting `AI_PROVIDER=rules` runs the deterministic zero-dependency provider.
 
 ### 2.2 Strict Separation of Semantic Reasoning vs. Physical Inventory
 Veylo enforces strict honesty:

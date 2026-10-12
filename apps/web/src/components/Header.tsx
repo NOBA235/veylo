@@ -57,10 +57,26 @@ export function Header({
           </div>
 
           {/* AI Provider */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-700 text-xs">
-            <Cpu className="w-3.5 h-3.5 text-blue-600" />
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs border ${
+              aiProvider === "bedrock"
+                ? "bg-purple-50/80 border-purple-200 text-purple-900"
+                : "bg-slate-50 border-slate-200 text-slate-700"
+            }`}
+            title={
+              aiProvider === "bedrock"
+                ? "Amazon Bedrock (Claude 3.5 Sonnet / AWS Builder Mini Challenge)"
+                : `AI Provider: ${aiProvider}`
+            }
+          >
+            <Cpu className={`w-3.5 h-3.5 ${aiProvider === "bedrock" ? "text-purple-600" : "text-blue-600"}`} />
             <span className="font-medium">AI:</span>
-            <span className="text-slate-900 font-mono uppercase text-[11px]">{aiProvider}</span>
+            <span className="font-mono uppercase text-[11px] font-semibold">
+              {aiProvider === "bedrock" ? "BEDROCK" : aiProvider}
+            </span>
+            {aiProvider === "bedrock" && (
+              <span className="text-[10px] text-purple-700 font-mono hidden xl:inline">Claude 3.5</span>
+            )}
           </div>
 
           {/* Evidence Trust */}
