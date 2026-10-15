@@ -31,21 +31,22 @@ export function ShoppingListDrawer({
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/40 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
       <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col border-l border-slate-200">
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/80 p-3 sm:p-5">
+          <div className="flex min-w-0 items-center gap-2.5">
             <div className="p-2 bg-slate-900 text-white rounded-lg">
               <ShoppingBag className="w-4 h-4" />
             </div>
             <div>
               <h3 className="font-semibold text-slate-900 text-base">Shopping List</h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] text-slate-500 sm:text-xs">
                 Created via MCP <code className="text-[11px] font-mono">create_shopping_list</code>
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
+            aria-label="Close shopping list"
+            className="flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-600"
           >
             <X className="w-5 h-5" />
           </button>
@@ -64,8 +65,8 @@ export function ShoppingListDrawer({
                 key={idx}
                 className="flex items-start justify-between gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs"
               >
-                <div>
-                  <h4 className="font-semibold text-slate-900 text-sm">{it.product}</h4>
+                <div className="min-w-0">
+                  <h4 className="break-words font-semibold text-slate-900 text-sm">{it.product}</h4>
                   <div className="flex items-center gap-2 mt-1 text-slate-500">
                     <span>Qty: {it.quantity}</span>
                     {it.notes && (

@@ -27,13 +27,13 @@ export function AgentTraceDrawer({
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/40 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
       <div className="w-full max-w-xl bg-white h-full shadow-2xl flex flex-col border-l border-slate-200">
         {/* Drawer Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/80 p-3 sm:p-5">
+          <div className="flex min-w-0 items-center gap-2.5">
             <div className="p-2 bg-slate-900 text-white rounded-lg">
               <Terminal className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 text-base flex items-center gap-2">
+              <h3 className="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-slate-900 sm:gap-2 sm:text-base">
                 <span>Agent Planner Trace</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-200 text-slate-800">
                   {stepsUsed}/{maxSteps} steps
@@ -45,14 +45,15 @@ export function AgentTraceDrawer({
                   </span>
                 )}
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] text-slate-500 sm:text-xs">
                 Inspectable, evidence-first execution log (MCP spec 2025-11-25)
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
+            aria-label="Close agent trace"
+            className="flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-600"
           >
             <X className="w-5 h-5" />
           </button>
@@ -195,14 +196,14 @@ export function AgentTraceDrawer({
       </div>
 
         {/* Drawer Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 text-[11px] text-slate-500 flex items-center justify-between">
-          <span className="flex items-center gap-1.5">
+        <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 p-4 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <span className="flex items-start gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             Observable decisions only. Zero private chain-of-thought leaked.
           </span>
           <button
             onClick={onClose}
-            className="px-3 py-1 bg-white border border-slate-300 rounded text-slate-700 hover:bg-slate-100 font-medium transition-colors"
+            className="min-h-10 self-end rounded border border-slate-300 bg-white px-3 py-1 font-medium text-slate-700 transition-colors hover:bg-slate-100 sm:self-auto"
           >
             Close
           </button>

@@ -23,10 +23,10 @@ export function StoreModal({
   if (!isOpen || !details) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-end overflow-y-auto bg-slate-900/40 p-0 backdrop-blur-xs sm:items-center sm:p-4">
+      <div className="my-auto max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150 sm:max-w-lg sm:rounded-2xl">
         {/* Modal Header */}
-        <div className="p-5 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/50 p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-slate-900 text-white rounded-xl">
               <Store className="w-5 h-5" />
@@ -40,7 +40,8 @@ export function StoreModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors"
+            aria-label="Close store details"
+            className="flex min-h-10 min-w-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/50 hover:text-slate-600"
           >
             <X className="w-5 h-5" />
           </button>

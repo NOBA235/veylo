@@ -18,8 +18,8 @@ export function DirectionsModal({
   if (!isOpen || !directions) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-end overflow-y-auto bg-slate-900/40 p-0 backdrop-blur-xs sm:items-center sm:p-4">
+      <div className="my-auto max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-150 sm:max-w-md sm:rounded-2xl">
         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-slate-900 text-white rounded-lg">
@@ -32,7 +32,8 @@ export function DirectionsModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors"
+            aria-label="Close directions"
+            className="flex min-h-10 min-w-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/50 hover:text-slate-600"
           >
             <X className="w-5 h-5" />
           </button>
@@ -52,10 +53,10 @@ export function DirectionsModal({
           </p>
         </div>
 
-        <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg transition-colors"
+            className="min-h-10 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100"
           >
             Cancel
           </button>
@@ -63,7 +64,7 @@ export function DirectionsModal({
             href={directions.url}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors shadow-sm"
+            className="flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
           >
             <span>Open in Maps</span>
             <ExternalLink className="w-3.5 h-3.5" />

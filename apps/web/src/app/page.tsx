@@ -15,7 +15,7 @@ import { StoreModal } from "@/components/StoreModal";
 import { DirectionsModal } from "@/components/DirectionsModal";
 import { AlexaSimulationModal } from "@/components/AlexaSimulationModal";
 import type { AssistantMode } from "@/components/AssistantAvatar";
-import { Sparkles, Square, Volume2, PackageCheck } from "lucide-react";
+import { Sparkles, Square, Volume2, PackageCheck, RotateCcw } from "lucide-react";
 
 export default function Home() {
   const [agentResult, setAgentResult] = useState<AgentResult | null>(null);
@@ -238,6 +238,20 @@ export default function Home() {
     }
   };
 
+  // Clear / Reset search back to fresh clean state
+  const handleResetSearch = () => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    setIsListening(false);
+    setIsLoading(false);
+    setIsStreaming(false);
+    setAgentResult(null);
+    setAgentState(null);
+    setLiveTrace([]);
+  };
+
   // Switch to alternative
   const handleSelectAlternative = (alt: string) => {
     handleAnswerClarification(`I prefer ${alt}`);
@@ -372,7 +386,7 @@ export default function Home() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
         {/* Search Hero */}
         <SearchHero
           onSearch={handleSearch}
@@ -385,9 +399,9 @@ export default function Home() {
 
         {/* Progressive Agent Trace Stream: Live feed during search (Section 37.1) */}
         {isLoading && (
-          <div className="my-6 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-xs p-5 shadow-sm animate-in fade-in duration-200">
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
+          <div className="my-5 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur-xs animate-in fade-in duration-200 sm:my-6 sm:p-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-2.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
                 <span className="font-semibold text-slate-900 text-sm">
                   Veylo Agent Progressive Trace (Live)
@@ -399,7 +413,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setIsTraceOpen(true)}
-                className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                  className="min-h-9 shrink-0 text-left text-xs font-medium text-blue-600 transition-colors hover:text-blue-800"
               >
                 Inspect Full Log →
               </button>
@@ -485,6 +499,23 @@ export default function Home() {
         {/* Results Progression */}
         {agentResult && !isLoading && (
           <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Results Action Bar with Clear / New Search */}
+            <div className="flex items-center justify-between gap-3 pb-1 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Search results verified via MCP (evidence-first)</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetSearch}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 text-xs font-medium shadow-2xs transition-all active:scale-95"
+                title="Reset dashboard and start a new search"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Clear / New Search</span>
+              </button>
+            </div>
+
             {/* 1. Clarification Card if agent needs input */}
             {agentResult.status === "needs_input" && agentResult.question && (
               <ClarificationCard

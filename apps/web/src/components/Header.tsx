@@ -24,10 +24,10 @@ export function Header({
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold tracking-tight text-lg shadow-sm">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="w-9 h-9 shrink-0 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold tracking-tight text-lg shadow-sm">
             V
           </div>
           <div>
@@ -87,11 +87,12 @@ export function Header({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {/* Alexa+ Simulation Trigger */}
           <button
             onClick={onOpenAlexaSimulation}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200"
+            aria-label="Open Alexa+ preview"
+            className="flex min-h-10 min-w-10 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 sm:px-3"
             title="Preview how an Alexa+ agent invokes Veylo"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-600" />
@@ -101,7 +102,8 @@ export function Header({
           {/* Shopping List Trigger */}
           <button
             onClick={onOpenShoppingList}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200 relative"
+            aria-label={`Open shopping list${shoppingListCount > 0 ? `, ${shoppingListCount} items` : ""}`}
+            className="relative flex min-h-10 min-w-10 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 sm:px-3"
             title="View saved shopping list"
           >
             <ShoppingBag className="w-3.5 h-3.5 text-slate-600" />
@@ -116,11 +118,12 @@ export function Header({
           {/* Agent Trace Drawer Trigger */}
           <button
             onClick={onOpenTrace}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-900 bg-slate-900 text-white hover:bg-slate-800 rounded-lg transition-colors shadow-sm"
+            aria-label={`Open agent trace${traceCount > 0 ? `, ${traceCount} steps` : ""}`}
+            className="flex min-h-10 min-w-10 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-2.5 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-slate-800 sm:px-3"
             title="Inspect bounded agent planner reasoning trace"
           >
             <Terminal className="w-3.5 h-3.5 text-slate-300" />
-            <span>Agent Trace</span>
+            <span className="hidden sm:inline">Agent Trace</span>
             {traceCount > 0 && (
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-500 text-white">
                 {traceCount}
