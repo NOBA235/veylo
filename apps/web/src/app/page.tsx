@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import type { AgentResult, AgentState } from "@veylo/agent";
+import type { AgentResult, AgentState, TraceStep } from "@veylo/agent";
 import type { GetPlaceDetailsOutput, GetDirectionsOutput } from "@veylo/types";
 import { Header } from "@/components/Header";
 import { SearchHero } from "@/components/SearchHero";
@@ -15,12 +15,14 @@ import { StoreModal } from "@/components/StoreModal";
 import { DirectionsModal } from "@/components/DirectionsModal";
 import { AlexaSimulationModal } from "@/components/AlexaSimulationModal";
 import type { AssistantMode } from "@/components/AssistantAvatar";
-import { Sparkles, Square, Volume2 } from "lucide-react";
+import { Sparkles, Square, Volume2, PackageCheck } from "lucide-react";
 
 export default function Home() {
   const [agentResult, setAgentResult] = useState<AgentResult | null>(null);
   const [agentState, setAgentState] = useState<AgentState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [liveTrace, setLiveTrace] = useState<TraceStep[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [currentLocation, setCurrentLocation] = useState("Austin, TX");
@@ -60,6 +62,91 @@ export default function Home() {
       .catch((err) => console.warn("Could not fetch health:", err));
   }, []);
 
+  // Helper to execute agent with real-time SSE progressive trace streaming (Section 37.1)
+  const executeAgentWithStream = async (
+    payload: Record<string, unknown>,
+    onStep: (step: TraceStep) => void
+  ): Promise<AgentResult> => {
+    const res = await fetch("/api/agent", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({ ...payload, stream: true }),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Agent request failed (${res.status}): ${errorText}`);
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("text/event-stream")) {
+      const data = await res.json();
+      if (!data.ok || !data.result) {
+        throw new Error(data.error || "Agent execution failed");
+      }
+      return data.result as AgentResult;
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) {
+      throw new Error("No readable stream in response");
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalResult: AgentResult | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() ?? "";
+
+      for (const part of parts) {
+        if (!part.trim()) continue;
+        const lines = part.split("\n");
+        let event = "message";
+        let dataStr = "";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            event = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            dataStr = line.slice(6);
+          }
+        }
+        if (!dataStr) continue;
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (event === "step") {
+            onStep(parsed as TraceStep);
+          } else if (event === "done") {
+            if (parsed.ok && parsed.result) {
+              finalResult = parsed.result;
+            } else if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+          } else if (event === "error") {
+            throw new Error(parsed.error || "Agent execution failed");
+          }
+        } catch (parseErr) {
+          if (parseErr instanceof Error && !parseErr.message.includes("Unexpected end of JSON")) {
+            console.warn("Failed to parse SSE payload:", parseErr);
+          }
+        }
+      }
+    }
+
+    if (!finalResult) {
+      throw new Error("Stream closed before receiving agent completion result");
+    }
+    return finalResult;
+  };
+
   // Run initial search
   const handleSearch = async (params: {
     message: string;
@@ -71,33 +158,34 @@ export default function Home() {
     setIsSpeaking(false);
     setIsListening(false);
     setIsLoading(true);
+    setIsStreaming(true);
     setAgentResult(null);
     setAgentState(null);
+    setLiveTrace([]);
 
     try {
-      const res = await fetch("/api/agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const result = await executeAgentWithStream(
+        {
           message: params.message,
           location: params.location,
           urgency: params.urgency,
           compatibility: params.compatibility,
-        }),
-      });
+          userId: "default",
+        },
+        (step) => {
+          setLiveTrace((prev) => [...prev, step]);
+        }
+      );
 
-      const data = await res.json();
-      if (data.ok && data.result) {
-        setAgentResult(data.result);
-        setAgentState(data.result.state);
-      } else {
-        alert(`Search error: ${data.error || "Unknown error"}`);
-      }
+      setAgentResult(result);
+      setAgentState(result.state);
+      setLiveTrace(result.trace);
     } catch (err: unknown) {
       const e = err instanceof Error ? err : new Error(String(err));
-      alert(`Network error: ${e.message || "Failed to contact Veylo agent"}`);
+      alert(`Search error: ${e.message || "Failed to contact Veylo agent"}`);
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
     }
   };
 
@@ -124,29 +212,29 @@ export default function Home() {
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
     setIsSpeaking(false);
     setIsLoading(true);
+    setIsStreaming(true);
 
     try {
-      const res = await fetch("/api/agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const result = await executeAgentWithStream(
+        {
           answer,
           state: agentState,
-        }),
-      });
+          userId: "default",
+        },
+        (step) => {
+          setLiveTrace((prev) => [...prev, step]);
+        }
+      );
 
-      const data = await res.json();
-      if (data.ok && data.result) {
-        setAgentResult(data.result);
-        setAgentState(data.result.state);
-      } else {
-        alert(`Error replying: ${data.error || "Unknown error"}`);
-      }
+      setAgentResult(result);
+      setAgentState(result.state);
+      setLiveTrace(result.trace);
     } catch (err: unknown) {
       const e = err instanceof Error ? err : new Error(String(err));
-      alert(`Network error: ${e.message}`);
+      alert(`Error replying: ${e.message}`);
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
     }
   };
 
@@ -267,8 +355,8 @@ export default function Home() {
   const comparison = agentResult?.state.comparison;
   const places = agentResult?.state.places;
   const checks = agentResult?.state.checks;
-  const trace = agentResult?.trace ?? [];
-  const stepsUsed = agentResult?.stepsUsed ?? 0;
+  const trace = isStreaming ? liveTrace : (agentResult?.trace ?? liveTrace);
+  const stepsUsed = isStreaming ? liveTrace.length : (agentResult?.stepsUsed ?? liveTrace.length);
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
@@ -295,16 +383,102 @@ export default function Home() {
           onListeningChange={setIsListening}
         />
 
-        {/* Loading Spinner */}
+        {/* Progressive Agent Trace Stream: Live feed during search (Section 37.1) */}
         {isLoading && (
-          <div className="py-12 text-center flex flex-col items-center justify-center gap-3">
-            <div className="w-8 h-8 border-3 border-slate-300 border-t-slate-900 rounded-full animate-spin" />
-            <p className="text-sm font-medium text-slate-700">
-              Agent analyzing intent, checking local OpenStreetMap places, and synthesizing evidence...
-            </p>
-            <p className="text-xs text-slate-400 font-mono">
-              Evaluating bounded planner loop (max 8 steps) over MCP
-            </p>
+          <div className="my-6 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-xs p-5 shadow-sm animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
+                <span className="font-semibold text-slate-900 text-sm">
+                  Veylo Agent Progressive Trace (Live)
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                  Step {liveTrace.length}/8
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTraceOpen(true)}
+                className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                Inspect Full Log →
+              </button>
+            </div>
+
+            {liveTrace.length === 0 ? (
+              <div className="py-6 text-center flex flex-col items-center justify-center gap-2.5">
+                <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin" />
+                <p className="text-xs font-medium text-slate-600">
+                  Negotiating MCP tools & analyzing query intent...
+                </p>
+                <p className="text-[11px] text-slate-400 font-mono">
+                  Streaming execution steps via SSE from MCP server
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                {liveTrace.map((step) => {
+                  const isTool = step.kind === "tool";
+                  const isAsk = step.kind === "ask";
+                  const isStop = step.kind === "stop";
+
+                  return (
+                    <div
+                      key={step.step}
+                      className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs animate-in fade-in slide-in-from-bottom-2 duration-300"
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-mono font-bold shrink-0">
+                            {step.step}
+                          </span>
+                          {isTool && (
+                            <span className="font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 text-[11px]">
+                              {step.tool}()
+                            </span>
+                          )}
+                          {isAsk && (
+                            <span className="font-mono font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[11px]">
+                              ask_user()
+                            </span>
+                          )}
+                          {isStop && (
+                            <span className="font-mono font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 text-[11px]">
+                              stop_planner()
+                            </span>
+                          )}
+                        </div>
+                        {step.provider && (
+                          <span className="font-mono text-[10px] text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                            {step.provider}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-slate-800 text-xs font-medium leading-relaxed pl-7">
+                        {step.decision}
+                      </p>
+
+                      {(step.confidenceChange || (step.evidenceAdded !== undefined && step.evidenceAdded > 0)) && (
+                        <div className="flex items-center gap-3 pl-7 mt-1.5 text-[11px] text-slate-500">
+                          {step.confidenceChange && (
+                            <span>
+                              Confidence: {step.confidenceChange.from !== undefined ? `${Math.round(step.confidenceChange.from * 100)}% → ` : ""}
+                              <strong className="text-slate-700">{Math.round(step.confidenceChange.to * 100)}%</strong>
+                            </span>
+                          )}
+                          {step.evidenceAdded !== undefined && step.evidenceAdded > 0 && (
+                            <span>
+                              Evidence: <strong className="text-emerald-700">+{step.evidenceAdded}</strong>
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -318,6 +492,26 @@ export default function Home() {
                 onAnswer={handleAnswerClarification}
                 isLoading={isLoading}
               />
+            )}
+
+            {/* User Inventory Owned Item Warning (Section 37.2) */}
+            {agentResult.state.ownedWarning && (
+              <div className="p-4 bg-amber-50/90 border border-amber-300 rounded-2xl flex items-start gap-3 text-amber-900 shadow-xs animate-in fade-in duration-200">
+                <div className="p-2 bg-amber-100 rounded-xl border border-amber-300 text-amber-800 shrink-0 mt-0.5">
+                  <PackageCheck className="w-5 h-5 text-amber-700" />
+                </div>
+                <div className="flex-1 text-xs sm:text-sm">
+                  <div className="font-semibold text-amber-950 mb-0.5 flex items-center gap-2">
+                    <span>Hardware & Inventory Memory</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 font-bold">
+                      Redundant Purchase Prevented
+                    </span>
+                  </div>
+                  <p className="font-medium text-amber-900 leading-relaxed">
+                    {agentResult.state.ownedWarning}
+                  </p>
+                </div>
+              </div>
             )}
 
             {/* 2. Plain Language Answer Banner */}
@@ -383,6 +577,7 @@ export default function Home() {
         onClose={() => setIsTraceOpen(false)}
         trace={trace}
         stepsUsed={stepsUsed}
+        isStreaming={isStreaming}
       />
 
       <ShoppingListDrawer

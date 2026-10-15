@@ -20,4 +20,5 @@ export const TOOL_META: Record<ToolName, ToolMeta> = {
     title: "Create a shopping list",
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
+  get_user_context: { title: "Get registered user devices and inventory", annotations: read(false) },
 };

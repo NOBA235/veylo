@@ -31,6 +31,7 @@ export function buildAnswer(state: AgentState, reason: StopReason, note?: string
   } else {
     lines.push(`You probably mean a ${id.product} (${pct(id.confidence)} confident).`);
     if (id.uncertainty && !/^No significant ambiguity/.test(id.uncertainty)) lines.push(id.uncertainty);
+    if (state.ownedWarning) lines.push(state.ownedWarning);
   }
   if (note) lines.push(note);
 

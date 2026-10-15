@@ -221,3 +221,41 @@ test("changing location discards the old search", async () => {
   assert.equal(moved.question?.field, "location");
   assert.deepEqual(moved.state.checks, {});
 });
+
+test("progressive trace: emits onStep callback in real time for each tool call and ask", async () => {
+  const h = harness();
+  const streamedSteps: number[] = [];
+  const r = await runAgent(
+    h.caller,
+    { message: KILLER },
+    {
+      onStep: (step) => {
+        streamedSteps.push(step.step);
+      },
+    }
+  );
+  assert.ok(streamedSteps.length >= 2, "should stream at least tool step and ask step");
+  assert.equal(streamedSteps[0], 1);
+  assert.equal(r.trace.length, streamedSteps.length);
+});
+
+test("user context memory: deducts USB-C from registered laptop and warns about owned inventory", async () => {
+  const h = harness();
+  const r = await runAgent(h.caller, {
+    message: "I need an adapter for my laptop to connect to a TV.",
+    userId: "default",
+  });
+
+  // Verify get_user_context was called first
+  assert.equal(h.names()[0], "get_user_context");
+  assert.equal(h.names()[1], "identify_product");
+
+  // Verify device connector USB-C was inferred from MacBook M3
+  assert.equal(r.state.compatibility, "USB-C");
+
+  // Verify owned inventory warning was triggered because default user owns "USB-C to HDMI adapter"
+  assert.ok(r.state.ownedWarning, "should have ownedWarning");
+  assert.match(r.state.ownedWarning!, /already own a USB-C to HDMI adapter/i);
+  assert.match(r.answer, /already own a USB-C to HDMI adapter/i);
+});
+

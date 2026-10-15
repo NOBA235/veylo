@@ -214,6 +214,38 @@ export const CreateShoppingListOutput = z.object({
   items: z.array(z.string()),
 });
 
+/* 9.11 get_user_context: registered hardware devices and physical home inventory */
+export const UserDevice = z.object({
+  id: z.string(),
+  userId: z.string(),
+  deviceType: z.string(),
+  brand: z.string(),
+  model: z.string(),
+  connector: z.string(),
+  notes: z.string().optional(),
+});
+export type UserDevice = z.infer<typeof UserDevice>;
+
+export const UserInventoryItem = z.object({
+  id: z.string(),
+  userId: z.string(),
+  productId: z.string(),
+  acquiredAt: z.string(),
+  notes: z.string().optional(),
+  source: z.enum(["purchased", "already_owned", "gifted"]).or(z.string()),
+});
+export type UserInventoryItem = z.infer<typeof UserInventoryItem>;
+
+export const GetUserContextInput = z.object({
+  userId: z.string().min(1),
+});
+
+export const GetUserContextOutput = z.object({
+  userId: z.string(),
+  devices: z.array(UserDevice),
+  inventory: z.array(UserInventoryItem),
+});
+
 /** Registry consumed by the MCP server, the typed MCP client and the docs generator. */
 export const toolContracts = {
   identify_product: {
@@ -268,6 +300,12 @@ export const toolContracts = {
     input: CreateShoppingListInput,
     output: CreateShoppingListOutput,
   },
+  get_user_context: {
+    description:
+      "Retrieve registered devices and past physical product inventory for a user to personalize compatibility and avoid duplicate purchases.",
+    input: GetUserContextInput,
+    output: GetUserContextOutput,
+  },
 } as const;
 
 export type ToolName = keyof typeof toolContracts;
@@ -294,3 +332,5 @@ export type SearchWebInput = z.infer<typeof SearchWebInput>;
 export type SearchWebOutput = z.infer<typeof SearchWebOutput>;
 export type CreateShoppingListInput = z.infer<typeof CreateShoppingListInput>;
 export type CreateShoppingListOutput = z.infer<typeof CreateShoppingListOutput>;
+export type GetUserContextInput = z.infer<typeof GetUserContextInput>;
+export type GetUserContextOutput = z.infer<typeof GetUserContextOutput>;

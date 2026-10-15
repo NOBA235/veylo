@@ -1,4 +1,4 @@
-import type { InventoryStatus } from "@veylo/types";
+import type { InventoryStatus, UserDevice, UserInventoryItem } from "@veylo/types";
 import type { CompareAssist, IdentifyAssist } from "./assist";
 import type { CatalogService } from "./catalog-service";
 import type { GeoPoint } from "./geo";
@@ -85,6 +85,12 @@ export interface EvidenceLedger {
   bestFor(product: string, opts?: { searchLocation?: string; since?: string }): Promise<LedgerEntry | undefined>;
 }
 
+export interface UserContextStore {
+  getUserContext(userId: string): Promise<{ devices: UserDevice[]; inventory: UserInventoryItem[] }>;
+  addDevice?(device: UserDevice): Promise<void>;
+  addInventoryItem?(item: UserInventoryItem): Promise<void>;
+}
+
 export interface CoreContext {
   catalog: CatalogService;
   placeSources: PlaceSource[];
@@ -93,6 +99,7 @@ export interface CoreContext {
   ledger: EvidenceLedger;
   evidenceProviders: InventoryEvidenceProvider[];
   shoppingLists: ShoppingListStore;
+  userContext?: UserContextStore;
   /** Optional. Without it the search_web tool reports NOT_CONFIGURED. */
   webSearch?: WebSearchProvider;
   /** When set, identify_product asks this provider after the rules stages. Absent means rules only. */

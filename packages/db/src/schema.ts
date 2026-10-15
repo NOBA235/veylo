@@ -132,3 +132,25 @@ export const shoppingListItems = pgTable("shopping_list_items", {
   notes: text("notes"),
   createdAt: createdAt(),
 });
+
+export const userDevices = pgTable("user_devices", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull(),
+  deviceType: text("device_type").notNull(), // laptop, phone, tablet, tv, etc.
+  brand: text("brand").notNull(),
+  model: text("model").notNull(),
+  connector: text("connector").notNull(), // usb-c, lightning, micro-usb, hdmi
+  notes: text("notes"),
+  createdAt: createdAt(),
+});
+
+export const userInventory = pgTable("user_inventory", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull(),
+  productId: text("product_id").notNull(),
+  acquiredAt: timestamp("acquired_at", { withTimezone: true }).notNull().defaultNow(),
+  notes: text("notes"),
+  source: text("source").notNull().default("purchased"), // purchased, already_owned, gifted
+  createdAt: createdAt(),
+});
+

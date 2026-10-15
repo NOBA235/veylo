@@ -37,7 +37,7 @@ function resetLocal(s: AgentState) {
 export async function runAgent(
   caller: ToolCaller,
   input: AgentInput,
-  opts: { state?: AgentState; maxSteps?: number } = {},
+  opts: { state?: AgentState; maxSteps?: number; onStep?: (step: TraceStep) => void } = {},
 ): Promise<AgentResult> {
   const maxSteps = opts.maxSteps ?? DEFAULT_MAX_STEPS;
   // A new message always starts a fresh request; otherwise continue from the supplied state.
@@ -49,6 +49,7 @@ export async function runAgent(
     state = structuredClone(opts.state);
     state.failed ??= [];
   }
+  if (input.userId !== undefined) state.userId = input.userId;
   if (input.answer?.trim()) {
     state.answers.push(input.answer.trim());
     state.identified = undefined; // re-identify with the new detail
@@ -84,30 +85,38 @@ export async function runAgent(
       const out = await caller.call(tool, toolInput);
       Object.assign(step, spec.describe(out));
       state.trace.push(step);
+      opts.onStep?.(step);
       return { ok: true, out };
     } catch (e) {
       const err = e instanceof ToolCallError ? { code: e.code, message: e.message } : { code: "UNEXPECTED", message: e instanceof Error ? e.message : String(e) };
       step.error = err;
       step.outputSummary = `error ${err.code}`;
       state.trace.push(step);
+      opts.onStep?.(step);
       return { ok: false, err };
     }
   };
 
   const finish = (status: AgentResult["status"], stopReason: StopReason, extra: { question?: AgentResult["question"]; note?: string } = {}): AgentResult => {
-    state.trace.push({
+    const step: TraceStep = {
       step: state.trace.length + 1,
       kind: extra.question ? "ask" : "stop",
       decision: extra.question ? "Ambiguity or missing context would change the result, so I ask instead of guessing." : `Stopping: ${stopReason}.`,
       ...(extra.question ? { question: extra.question.text } : {}),
-    });
+    };
+    state.trace.push(step);
+    opts.onStep?.(step);
     const bestPlace = pickBest(state);
     const check = bestPlace ? state.checks[bestPlace.id] : undefined;
     return {
       status,
       stopReason,
       question: extra.question,
-      answer: extra.question ? extra.question.text : buildAnswer(state, stopReason, extra.note),
+      answer: extra.question
+        ? state.ownedWarning
+          ? `${state.ownedWarning} ${extra.question.text}`
+          : extra.question.text
+        : buildAnswer(state, stopReason, extra.note),
       best: bestPlace && check ? { placeId: bestPlace.id, name: bestPlace.name, status: check.status, nextAction: check.nextAction, directionsUrl: state.directions?.url } : undefined,
       trace: state.trace,
       state,
@@ -118,6 +127,34 @@ export async function runAgent(
     finish("needs_input", reason, { question: { field, text } });
 
   for (;;) {
+    // 0. User context: check registered devices and past inventory if userId is known.
+    if (state.userId && !state.userContext && used < maxSteps) {
+      const r = await exec("get_user_context", { userId: state.userId }, {
+        decision: "Check user hardware devices and owned physical inventory to personalize compatibility and check past ownership.",
+        inputSummary: `userId: "${state.userId}"`,
+        describe: (o) => ({
+          outputSummary: `${o.devices.length} devices (${o.devices.map((d) => d.model).join(", ")}), ${o.inventory.length} owned items`,
+        }),
+      });
+      if (r.ok) {
+        state.userContext = r.out;
+        // Infer compatibility from registered devices if not explicitly stated
+        if (!state.compatibility) {
+          const descLower = state.description.toLowerCase();
+          if (descLower.includes("laptop")) {
+            const laptop = r.out.devices.find((d) => d.deviceType === "laptop");
+            if (laptop) state.compatibility = laptop.connector.toUpperCase();
+          } else if (descLower.includes("phone")) {
+            const phone = r.out.devices.find((d) => d.deviceType === "phone");
+            if (phone) state.compatibility = phone.connector.toUpperCase();
+          } else if (descLower.includes("tv")) {
+            const tv = r.out.devices.find((d) => d.deviceType === "tv");
+            if (tv) state.compatibility = tv.connector.toUpperCase();
+          }
+        }
+      }
+    }
+
     // 1. Understand: identify before anything else.
     if (!state.identified) {
       if (used >= maxSteps) return finish("stopped", "step_limit");
@@ -134,6 +171,18 @@ export async function runAgent(
       });
       if (!r.ok) return finish("stopped", "tool_error", { note: `I couldn't identify the product (${r.err.message}).` });
       state.identified = r.out;
+
+      // Check if user already owns this identified product to prevent redundant purchases
+      if (state.userContext?.inventory && !state.ownedWarning) {
+        const owned = state.userContext.inventory.find(
+          (item) =>
+            item.productId.toLowerCase() === r.out.product.toLowerCase() ||
+            r.out.aliases.some((a) => a.toLowerCase() === item.productId.toLowerCase())
+        );
+        if (owned) {
+          state.ownedWarning = `You already own a ${owned.productId} in your home inventory (${owned.notes ?? "purchased previously"}). Do you need a second one or a replacement?`;
+        }
+      }
       continue;
     }
     const id = state.identified;

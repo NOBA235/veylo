@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { AliasType, CatalogProduct, CatalogRelationship, RelationshipType } from "../src/catalog";
+import { InMemoryUserContextStore } from "../src/user-context";
 
 // Exposed as "@veylo/core/testing" so other packages' tests can build a context from the real seed.
 const readSeed = <T>(f: string): T =>
@@ -129,6 +130,7 @@ export function makeCtx(over: CtxOverrides = {}): CoreContext & { warnings: stri
     ledger: new InMemoryEvidenceLedger(),
     evidenceProviders: [],
     shoppingLists: new InMemoryShoppingListStore(),
+    userContext: new InMemoryUserContextStore(),
     logger: { info() {}, warn: (m: string) => void warnings.push(m) },
     clock: () => new Date(NOW),
     warnings,

@@ -8,6 +8,7 @@ import { discoverLocalPlaces } from "./places";
 import { searchProducts } from "./search";
 import { createShoppingList } from "./shopping";
 import { searchWeb } from "./web";
+import { getUserContext } from "./user-context";
 
 /** One handler per MCP tool, receiving validated arguments. The MCP server registers exactly these. */
 export interface CoreServices {
@@ -21,6 +22,7 @@ export interface CoreServices {
   contact_store(i: ToolArgs<"contact_store">): Promise<ToolOutput<"contact_store">>;
   search_web(i: ToolArgs<"search_web">): Promise<ToolOutput<"search_web">>;
   create_shopping_list(i: ToolArgs<"create_shopping_list">): Promise<ToolOutput<"create_shopping_list">>;
+  get_user_context(i: ToolArgs<"get_user_context">): Promise<ToolOutput<"get_user_context">>;
 }
 
 export function createCoreServices(ctx: CoreContext): CoreServices {
@@ -35,5 +37,6 @@ export function createCoreServices(ctx: CoreContext): CoreServices {
     contact_store: (i) => contactStore(ctx, i),
     search_web: (i) => searchWeb(ctx, i),
     create_shopping_list: (i) => createShoppingList(ctx, i),
+    get_user_context: (i) => getUserContext(ctx, i),
   };
 }

@@ -10,6 +10,7 @@ interface AgentTraceDrawerProps {
   trace: TraceStep[];
   stepsUsed: number;
   maxSteps?: number;
+  isStreaming?: boolean;
 }
 
 export function AgentTraceDrawer({
@@ -18,6 +19,7 @@ export function AgentTraceDrawer({
   trace,
   stepsUsed,
   maxSteps = 8,
+  isStreaming = false,
 }: AgentTraceDrawerProps) {
   if (!isOpen) return null;
 
@@ -36,6 +38,12 @@ export function AgentTraceDrawer({
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-200 text-slate-800">
                   {stepsUsed}/{maxSteps} steps
                 </span>
+                {isStreaming && (
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                    Live streaming
+                  </span>
+                )}
               </h3>
               <p className="text-xs text-slate-500">
                 Inspectable, evidence-first execution log (MCP spec 2025-11-25)
@@ -54,19 +62,27 @@ export function AgentTraceDrawer({
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {trace.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-sm">
-              No planner steps executed yet. Run a search to observe tool calls.
+              {isStreaming ? (
+                <div className="flex flex-col items-center justify-center gap-3">
+                  <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
+                  <span>Connecting to MCP server and initiating reasoning trace...</span>
+                </div>
+              ) : (
+                "No planner steps executed yet. Run a search to observe tool calls."
+              )}
             </div>
           ) : (
-            trace.map((step) => {
-              const isTool = step.kind === "tool";
-              const isAsk = step.kind === "ask";
-              const isStop = step.kind === "stop";
+            <>
+              {trace.map((step) => {
+                const isTool = step.kind === "tool";
+                const isAsk = step.kind === "ask";
+                const isStop = step.kind === "stop";
 
-              return (
-                <div
-                  key={step.step}
-                  className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 shadow-2xs hover:border-slate-300 transition-colors"
-                >
+                return (
+                  <div
+                    key={step.step}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 shadow-2xs hover:border-slate-300 transition-colors animate-in fade-in slide-in-from-bottom-2 duration-300"
+                  >
                   {/* Step Header */}
                   <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-200/60">
                     <div className="flex items-center gap-2">
@@ -165,9 +181,18 @@ export function AgentTraceDrawer({
                   )}
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+            {isStreaming && (
+              <div className="flex items-center gap-2.5 p-3.5 rounded-xl border border-blue-200 bg-blue-50/70 text-blue-900 text-xs animate-pulse">
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping shrink-0" />
+                <div className="flex-1 font-medium">
+                  Veylo agent reasoning & executing next MCP tool in real time...
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
         {/* Drawer Footer */}
         <div className="p-4 border-t border-slate-200 bg-slate-50 text-[11px] text-slate-500 flex items-center justify-between">

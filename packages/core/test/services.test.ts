@@ -69,3 +69,15 @@ test("an unnamed place keeps one honest name across discovery, inventory, detail
   assert.equal((await s.get_place_details({ placeId: "osm:node/9" })).name, name);
   assert.ok((await s.get_directions({ placeId: "osm:node/9" })).destination.startsWith(name));
 });
+
+test("get_user_context returns registered devices and past product inventory", async () => {
+  const s = createCoreServices(makeCtx());
+  const res = toolContracts.get_user_context.output.parse(
+    await s.get_user_context({ userId: "default" })
+  );
+  assert.equal(res.userId, "default");
+  assert.ok(res.devices.length >= 2);
+  assert.ok(res.devices.some((d) => d.model.includes("MacBook")));
+  assert.ok(res.inventory.some((i) => i.productId.includes("USB-C to HDMI adapter")));
+});
+

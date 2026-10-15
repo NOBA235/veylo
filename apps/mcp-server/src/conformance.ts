@@ -48,6 +48,7 @@ export const SAMPLE_ARGS: Record<ToolName, Record<string, unknown>> = {
   contact_store: { storeId: "conformance-unknown-store" },
   search_web: { query: "usb c hdmi adapter", limit: 1 },
   create_shopping_list: { items: [{ product: "PTFE tape", quantity: 1 }] },
+  get_user_context: { userId: "default" },
 };
 /** Errors a healthy server may return for the sample calls above (unknown ids, optional integrations). */
 const EXPECTED_ERROR_CODES = new Set(["NOT_FOUND", "NOT_CONFIGURED", "UPSTREAM_UNAVAILABLE", "GEOCODE_FAILED", "UNKNOWN_CATEGORY"]);

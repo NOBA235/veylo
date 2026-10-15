@@ -9,6 +9,8 @@ export interface AgentInput {
   message?: string;
   /** A reply to a product clarification question. */
   answer?: string;
+  /** Optional user identifier for personalized hardware memory. */
+  userId?: string;
   location?: string;
   urgency?: Urgency;
   compatibility?: string;
@@ -38,6 +40,27 @@ export interface TraceStep {
 export interface AgentState {
   description: string;
   answers: string[];
+  userId?: string;
+  userContext?: {
+    devices: Array<{
+      id: string;
+      userId: string;
+      deviceType: string;
+      brand: string;
+      model: string;
+      connector: string;
+      notes?: string;
+    }>;
+    inventory: Array<{
+      id: string;
+      userId: string;
+      productId: string;
+      acquiredAt: string;
+      notes?: string;
+      source: string;
+    }>;
+  };
+  ownedWarning?: string;
   location?: string;
   urgency?: Urgency;
   compatibility?: string;
