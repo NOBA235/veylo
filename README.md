@@ -1,114 +1,168 @@
-# Veylo — See it. Say it. Find it.
+<div align="center">
 
-Veylo is a capability an Alexa+ agent can call to turn an ambiguous request ("that little thing that connects my laptop to the TV") into a concrete real-world action: what the thing probably is, which nearby stores are relevant, how much evidence there is that they stock it, and what to do next.
+# Veylo
 
-**UNKNOWN → ACTION:** description → product hypotheses → category → store types → real places → evidence → comparison → directions / contact.
+### Turn ambiguous human requests into concrete real-world shopping actions.
 
-## Hackathon declaration
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.5-black.svg?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![MCP Spec](https://img.shields.io/badge/MCP%20Spec-2025--11--25-emerald.svg?style=flat-square)](https://modelcontextprotocol.io/)
+[![Amazon Bedrock](https://img.shields.io/badge/Amazon%20Bedrock-Claude%203.5-purple.svg?style=flat-square&logo=amazon-aws)](https://aws.amazon.com/bedrock/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-- Event: Amazon Developer Hackathon (deadline Oct 23, 2026, 12:00pm PDT)
-- Primary track: **Alexa+**
-- Mini challenge: **AWS Builder** (Amazon Bedrock)
-- Open Source mini challenge: **not entered** (update this line if the repo goes public)
-- License: MIT (see `LICENSE`)
+<p align="center">
+  <b>See it. Say it. Find it.</b><br/>
+  An ambient voice agent capability exposed over the Model Context Protocol (MCP).
+</p>
 
-## Status
+</div>
 
-| Scope | State |
-| --- | --- |
-| Monorepo, TS strict, lint/format, Docker Postgres, `.env.example` | Complete |
-| Schema, migration runner, seed (69 products, 24 categories) | Complete, seed validated offline |
-| Core services: identify, search, discover, inventory evidence, compare, details/directions/contact | Complete & unit-tested (88 tests passing) |
-| MCP server (Streamable HTTP, spec 2025-11-25), typed client, all 10 tools, planner loop with trace | Complete & verified passing official conformance suite |
-| Web UI (Next.js 15, React 19, Tailwind CSS, Echo Show simulation modal, inspectable trace) | Complete, builds cleanly (`next build`) |
-| AI Provider Abstraction (`@veylo/ai` supporting `rules`, `bedrock`, `gemini`, `openai`) | Complete & tested with automatic graceful offline fallback |
-| Overpass/OSM local discovery & geocoding (`@veylo/local-discovery`) | Complete: `OverpassPlaceSource`, `NominatimGeocoder`, `WebEvidenceProvider`, `CachedPlaceStore` |
-| Alexa+ voice simulation & capability guides | Complete: Echo Show 10 multimodal simulator, voice synthesis, MCP inspection, demo scripts |
-| Demo Polish & Final Hackathon Deliverables | Complete |
+---
+
+## The Problem: The Ambiguity Gap
+
+When people need physical objects, they rarely know the technical product names:
+> *"I need that little thing that lets me connect my laptop to the TV. I don't know what it's called."*  
+> *"I need the white tape plumbers use around pipe threads."*  
+> *"I need a cable to charge my phone."*
+
+Traditional search engines fail because they require precise keywords. Generic chat models fail because they hallucinate local store inventory, hours, and availability.
+
+**Veylo bridges the ambiguity gap.** It functions as a composable agent capability that turns vague human descriptions into verified physical-world actions:
+```text
+UNKNOWN REQUEST ──► PRODUCT HYPOTHESES ──► CATEGORY MAPPING ──► REAL-WORLD STORES ──► EVIDENCE VERIFICATION ──► DIRECTIONS & CONTACT
+```
+
+---
+
+## Core Differentiators & Architecture
+
+### 1. Progressive Agent Trace (SSE Streaming)
+Veylo does not hide agent reasoning behind a black box or render a static trace after the fact. Planner decisions are streamed live over **Server-Sent Events (SSE)** from the MCP server to the client. Users and evaluators can watch the agent reason in real time: step numbers, tool calls, input/output summaries, confidence changes, and evidence additions with subtle, polished animations.
+
+### 2. Ambient Hardware Compatibility & Inventory Memory
+Veylo retains memory of user devices and owned inventory across sessions (`user_devices` and `user_inventory`):
+- **Hardware Deductions:** When a user requests an adapter for their laptop, Veylo detects their registered MacBook Pro (M3) and infers **USB-C** connector compatibility automatically.
+- **Redundant Purchase Prevention:** If the user already owns the item, Veylo catches it before purchase: *"You already own a USB-C to HDMI adapter in your inventory. Do you need a second one?"*
+
+### 3. Evidence-First Trust Model (Zero Hallucinated Stock)
+Every local store result carries an explicit, tamper-proof inventory trust state:
+- `CONFIRMED`: Real-time verified physical stock within 24 hours.
+- `LIKELY`: Category fit with verified first-party retailer catalog listing.
+- `WEB_FOUND`: Web mention without direct stock confirmation.
+- `UNKNOWN`: Plausible retailer, but zero product-level stock evidence.
+
+Veylo's schemas reject any claim of `CONFIRMED` stock without attached physical evidence. It never fabricates prices, opening hours, or inventory.
+
+### 4. Self-Hosted MCP Server (Spec 2025-11-25)
+Veylo exposes **11 composable tools** via stateless Streamable HTTP on `http://127.0.0.1:8787/mcp`, fully compliant with the latest Model Context Protocol specification. Both the Next.js web application and external voice agents (Alexa+) call the exact same MCP tools.
+
+### 5. Multi-Engine Intelligence Layer
+- **Amazon Bedrock:** Production-grade semantic reasoning using Anthropic Claude 3.5 Sonnet and Amazon Nova via the modern unified `ConverseCommand` API.
+- **Resilient Fallback:** Automatically switches to Google Gemini, OpenAI, or deterministic offline rules if credentials are unset or rate-limited. Zero broken sessions.
+
+---
+
+## System Architecture
+
+```mermaid
+flowchart LR
+  A["Alexa+ Voice Agent (or Echo Show Simulator)"] -->|"MCP (Streamable HTTP)"| M
+  W["Web Application (Next.js 15)"] -->|"Typed MCP Client"| M
+  M["MCP Server (/mcp :8787)"] --> C["@veylo/core"]
+  C --> AI["@veylo/ai (Multi-Engine Adapter)"]
+  C --> LD["@veylo/local-discovery"]
+  C --> DB[("PostgreSQL / Supabase")]
+  AI --> P["Bedrock | Gemini | OpenAI | Rules"]
+  LD --> O["OpenStreetMap / Overpass / Nominatim"]
+```
+
+### Monorepo Structure
+
+```text
+veylo/
+├── apps/
+│   ├── mcp-server/       # Model Context Protocol server (Streamable HTTP, port 8787)
+│   └── web/              # Next.js 15 App Router frontend (Tailwind CSS, Echo Show simulator)
+├── packages/
+│   ├── agent/            # Bounded agent loop (max 8 steps) with progressive trace streaming
+│   ├── ai/               # Unified AI engine (Amazon Bedrock, Gemini, OpenAI, rules)
+│   ├── core/             # Domain services, catalog index, and evidence verification engine
+│   ├── db/               # PostgreSQL & Supabase persistence with Drizzle ORM migrations
+│   ├── local-discovery/  # Real-world geocoding & OpenStreetMap Overpass spatial queries
+│   ├── mcp-client/       # Typed MCP client implementation
+│   └── types/            # Zod schemas & tool contracts (single source of truth)
+└── docs/                 # Architectural specifications and evaluation guides
+```
+
+---
 
 ## Quickstart
 
+### 1. Prerequisites
+- **Node.js:** `>= 22`
+- **Package Manager:** `pnpm` (`npm install -g pnpm`)
+- **Docker:** (Optional, for local PostgreSQL)
+
+### 2. Setup & Installation
 ```bash
-cp .env.example .env     # AI_PROVIDER=rules by default: no keys needed
+# Clone the repository
+git clone https://github.com/NOBA235/veylo.git
+cd veylo
+
+# Install monorepo dependencies
 pnpm install
-pnpm bootstrap           # docker compose up -d + migrate + seed (or run DEMO_MODE=true)
-pnpm seed:validate       # offline integrity check of the seed data
-```
 
-`pnpm dev` starts the MCP server on `http://127.0.0.1:8787/mcp` and the web UI on `http://localhost:3000`.
+# Initialize environment variables
+cp .env.example .env
+
+# Bootstrap database (applies migrations and seeds catalog)
+pnpm bootstrap
+```
+*(If running without Docker, simply supply your PostgreSQL or Supabase connection string as `DATABASE_URL` in `.env` and run `pnpm db:migrate && pnpm db:seed`.)*
+
+### 3. Start Development Servers
+```bash
+pnpm dev
+```
+- **Web Application:** `http://localhost:3000`
+- **MCP Server:** `http://127.0.0.1:8787/mcp`
+- **Health Telemetry:** `http://localhost:3000/api/health`
+
+---
+
+## Verification & Testing
+
+Veylo includes strict automated test suites across all packages:
 
 ```bash
-pnpm mcp:conformance                 # JSON-RPC conformance check against the running server
-npx @modelcontextprotocol/inspector  # explore with the official MCP Inspector (Streamable HTTP)
+# Run all 134 automated unit & integration tests
+pnpm test
+
+# Run strict TypeScript checks across the monorepo
+pnpm typecheck
+
+# Verify MCP protocol compliance against the running server
+pnpm mcp:conformance
+
+# Inspect MCP tools using the official Model Context Protocol Inspector
+npx @modelcontextprotocol/inspector http://127.0.0.1:8787/mcp
 ```
 
-## Tests
+---
 
-```bash
-pnpm test         # Node's built-in test runner via tsx across all workspace packages
-pnpm typecheck    # Strict TypeScript checks across monorepo
-```
+## Documentation
 
-## Architecture
+- **[System Architecture](docs/architecture.md):** Deep dive into the bounded agent loop, ports, and monorepo design.
+- **[MCP Tools Specification](docs/mcp-tools.md):** Schema contracts and execution documentation for all 11 tools.
+- **[Evidence Trust Model](docs/evidence-model.md):** Verification hierarchy, confidence scoring, and anti-hallucination rules.
+- **[Alexa+ Integration Guide](docs/alexa-plus-integration.md):** Ambient voice dialogue design, system prompts, and Echo Show 10 multimodal canvas.
+- **[Amazon Bedrock Integration](docs/aws-builder-integration.md):** Bedrock `ConverseCommand` integration, cross-region profiles, and structured JSON extraction.
+- **[Evaluation & Walkthrough Guide](docs/evaluation-guide.md):** Step-by-step evaluator scenarios for testing real-time trace and inventory memory.
+- **[Product Roadmap](docs/roadmap.md):** Forward-looking engineering vision including multimodal camera vision and retail POS webhooks.
 
-See [`docs/architecture.md`](docs/architecture.md). Tool contracts (Zod) live in `packages/types/src/tools.ts` and are the single source of truth for the MCP server, the web client and the docs.
+---
 
-## MCP tools (see `docs/mcp-tools.md`)
+## License
 
-`identify_product`, `search_products`, `discover_local_places`, `check_local_inventory`, `compare_products`, `get_place_details`, `get_directions`, `contact_store`, `search_web`, `create_shopping_list`.
-
-MCP spec target: **2025-11-25 or later**, Streamable HTTP, endpoint `/mcp`, port `8787`.
-
-## Evidence model
-
-Every local result carries one of `CONFIRMED`, `LIKELY`, `WEB_FOUND`, `UNKNOWN`. The schema for `check_local_inventory` rejects `CONFIRMED` without an evidence record. Veylo never fabricates inventory, prices, opening hours, contacts or reviews.
-
-## AWS Builder Mini Challenge Integration
-
-Amazon Bedrock is integrated as a load-bearing AI intelligence layer for structured product identification and trade-off comparison.
-
-- **Service:** Amazon Bedrock via `@aws-sdk/client-bedrock-runtime` (`BedrockRuntimeClient`)
-- **API:** Modern unified `ConverseCommand` API
-- **Models:** Cross-region inference profile IDs (e.g. `us.anthropic.claude-sonnet-4-6`)
-- **Safety & Reliability:** Explicit `maxTokens` (1024), Zod output validation, and instant fallback to offline `rules` provider if credentials are not configured.
-- **Detailed Documentation:** See [`docs/aws-builder-integration.md`](docs/aws-builder-integration.md) for full architecture, code links, IAM setup, and testing.
-
-## Alexa+ integration
-
-Veylo exposes composable MCP tools purpose-built for Alexa+ agents, accompanied by an interactive Echo Show 10 modal in the web UI.
-
-- **Architecture & Capability Guide:** [`docs/alexa-plus-integration.md`](docs/alexa-plus-integration.md) (system prompts, MCP tool schemas, agent directives)
-- **Live Demo Walkthrough Script:** [`docs/demo-script.md`](docs/demo-script.md) (killer demo & second demo step-by-step)
-- **3-Minute Video Submission Script:** [`docs/demo-video-script.md`](docs/demo-video-script.md) (timed screen & audio walkthrough)
-
-## Hackathon Judging Criteria Mapping
-
-- **Technical Implementation:**
-  - Real self-hosted Model Context Protocol server (spec 2025-11-25) using Streamable HTTP on port 8787.
-  - Amazon Bedrock integration via `@aws-sdk/client-bedrock-runtime` using `ConverseCommand` and cross-region profiles.
-  - Real OpenStreetMap / Overpass spatial queries and Nominatim geocoding in `@veylo/local-discovery`.
-  - Strict evidence-first inventory trust engine rejecting fabricated availability.
-- **Design & User Experience:**
-  - Clean Next.js 15 App Router UI with React 19 and Tailwind CSS.
-  - Ambient conversational experience with an interactive Echo Show 10 simulation modal and spoken voice synthesis.
-  - Transparent, inspectable bounded agent planner trace (max 8 steps, zero leaked private CoT).
-- **Potential Impact:**
-  - Eliminates the universal human frustration of knowing what physical object you need without knowing what it is called.
-  - Directly empowers ambient Alexa+ devices to become real-world shopping navigators rather than passive search engines.
-- **Quality of Idea & Originality:**
-  - **UNKNOWN → ACTION:** Orchestrates intent hypothesis, category deduction, store relevance, live local discovery, evidence verification, trade-off comparison, and concrete navigation.
-  - Stacked track excellence: Primary **Alexa+** capability combined with load-bearing **AWS Builder** Bedrock integration.
-
-## Documentation Index
-
-- Architecture Overview: [`docs/architecture.md`](docs/architecture.md)
-- MCP Tools Specification: [`docs/mcp-tools.md`](docs/mcp-tools.md)
-- AWS Builder Mini Challenge Integration: [`docs/aws-builder-integration.md`](docs/aws-builder-integration.md)
-- Alexa+ Capability & Architecture Guide: [`docs/alexa-plus-integration.md`](docs/alexa-plus-integration.md)
-- Evidence Trust Model: [`docs/evidence-model.md`](docs/evidence-model.md)
-- Live Demo Walkthrough Script: [`docs/demo-script.md`](docs/demo-script.md)
-- 3-Minute Hackathon Video Script: [`docs/demo-video-script.md`](docs/demo-video-script.md)
-- Platform & Product Feedback: [`docs/product-feedback.md`](docs/product-feedback.md)
-- Developer Friction Log: [`docs/friction-log.md`](docs/friction-log.md)
-- Feature Requests & Roadmap: [`docs/feature-requests.md`](docs/feature-requests.md)
-- Submission & Acceptance Checklist: [`docs/submission-checklist.md`](docs/submission-checklist.md)
+This project is licensed under the [MIT License](LICENSE).

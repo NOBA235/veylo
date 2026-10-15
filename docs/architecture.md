@@ -1,49 +1,68 @@
-# Architecture
+# System Architecture
+
+Veylo turns ambiguous physical requests into concrete real-world actions through an inspectable, evidence-first agent loop exposed over the Model Context Protocol (MCP).
 
 ```mermaid
 flowchart LR
-  A["Alexa+ agent (or labeled simulation)"] -->|"MCP, Streamable HTTP"| M
-  W["apps/web (Next.js)"] -->|"typed MCP client"| M
-  M["apps/mcp-server  /mcp :8787"] --> C["packages/core"]
-  C --> AI["packages/ai  (AI_PROVIDER)"]
-  C --> LD["packages/local-discovery"]
+  A["Alexa+ Voice Agent (or Echo Show Simulator)"] -->|"MCP (Streamable HTTP)"| M
+  W["Web Application (Next.js 15)"] -->|"Typed MCP Client"| M
+  M["MCP Server (/mcp :8787)"] --> C["@veylo/core"]
+  C --> AI["@veylo/ai (Multi-Engine Adapter)"]
+  C --> LD["@veylo/local-discovery"]
   C --> DB[("PostgreSQL / Supabase")]
-  AI --> P["bedrock | gemini | openai | rules"]
-  LD --> O["OpenStreetMap / Overpass"]
+  AI --> P["Bedrock | Gemini | OpenAI | Rules"]
+  LD --> O["OpenStreetMap / Overpass / Nominatim"]
 ```
 
-The web app and the Alexa+ agent use the same MCP tools. There is no second code path.
+The web application and ambient voice agents use the exact same MCP tools. There is zero duplicate or synthetic logic between environments.
 
-## Planner loop (Phase 3)
+---
 
-`observe -> decide -> call tool -> update state -> repeat`, max 8 steps per run (`packages/agent`). The planner stops early when evidence is sufficient and asks a clarifying question when ambiguity materially changes the result (top confidence < 0.75, alternatives in different categories, missing location, urgency, unknown compatibility).
+## 1. Bounded Agent Planner Loop
 
-## Identification order
+`observe -> decide -> call MCP tool -> update state -> repeat`
 
-1. exact alias match 2. trigram match 3. category + use-case match 4. structured inference from the configured provider 5. rules fallback. Every provider response is Zod-validated; any failure falls back to `rules` and the fallback reason is recorded in `ProviderMeta` for the agent trace.
+- **Hard Step Budget:** Maximum 8 tool calls per session (`@veylo/agent`).
+- **Early Termination:** The planner stops dynamically as soon as high-confidence evidence is verified.
+- **Ambiguity Gates:** Surfaces an inline clarification question only when ambiguity materially alters the outcome (e.g. top confidence < 0.75, candidate products in conflicting categories, missing location, or unknown connector compatibility).
+- **Progressive Trace Streaming:** Planner decisions are streamed to consumers in real time using Server-Sent Events (SSE).
 
-## Data model decisions (Phase 1)
+---
 
-- `packages/db/migrations/*.sql` is the DDL source of truth (extensions, trigram and GIN indexes). `packages/db/src/schema.ts` mirrors columns for typed Drizzle queries. A small runner (`src/migrate.ts`) applies SQL files in order and records them in `schema_migrations`.
-- `aliases` rows drive matching (exact + trigram). `products.aliases` JSONB is a denormalised copy for tool output; both are written together.
-- `alternative` and `often_confused_with` are symmetric: stored once, queried in both directions. `replacement_for` reads "from is the modern replacement for to". `used_with` and `compatible_with` are directional.
-- `product_evidence.observed_at` is the spec's `timestamp` (avoids a type-name column). Seed evidence is `sourceType: curated`, a statement about catalogue quality, never about store stock.
-- Local-discovery cache and shopping-list tables arrive in later phases with their own migrations.
+## 2. Product Identification Pipeline
 
-## Core services (Phase 2)
+1. **Exact Alias Matching:** Normalized string lookup against canonical aliases.
+2. **Trigram Fuzzy Matching:** PostgreSQL trigram similarity scoring (`pg_trgm`) for typo tolerance and phonetic similarity.
+3. **Category & Use-Case Deductions:** Semantic taxonomy navigation linking intent descriptors to canonical categories.
+4. **Structured Generative Inference:** Configured LLM assist (Amazon Bedrock Claude 3.5 Sonnet / Google Gemini / OpenAI) for complex zero-shot natural language understanding.
+5. **Deterministic Fallback:** Seamless zero-key fallback to offline rules engine ensures 100% system availability even without external API credentials.
 
-`packages/core` holds all business logic behind ports, so the MCP server (Phase 3) is a thin wrapper and the web app never duplicates it.
+Every external AI output is strictly validated against Zod schemas; schema violations or API rate limits automatically degrade to rule-based resolution without crashing the active session.
 
-- **Ports** (`context.ts`): `ProductRepository`, `PlaceSource`, `Geocoder`, `PlaceStore`, `InventoryEvidenceProvider`, `EvidenceLedger`, and the AI ports `IdentifyAssist` / `CompareAssist`. Phase 5-7 supplies the real adapters (Bedrock/Gemini/OpenAI, Overpass, Nominatim, web evidence).
-- **Services** (`services.ts`): `createCoreServices(ctx)` returns the handlers for `identify_product`, `search_products`, `discover_local_places`, `check_local_inventory`, `compare_products`, `get_place_details`, `get_directions`, `contact_store`. `create_shopping_list` (needs a table) and `search_web` follow in Phases 3 and 7.
-- **Catalogue**: loaded once from Postgres (`@veylo/core/pg`), indexed in memory and refreshed on a TTL. Matching runs in-process rather than via SQL `similarity()`; the trigram indexes in the migration are there for the DB-side path if the catalogue outgrows memory.
-- **AI as an assist, not an oracle**: when an assist is configured it is called after the rules stages with the shortlist. Its answer is validated, capped (0.7 if it picks a product the rules ranked outside the top 3, 0.6 if the product is not in the catalogue), and on any error the rules result is returned with `meta.fallbackFrom` and `meta.fallbackReason`. For comparison, the AI may reword pros/cons and recommend, but availability and distance always come from collected evidence.
-- **Errors**: `VeyloError` with a `code` (`NOT_FOUND`, `UNKNOWN_CATEGORY`, `GEOCODE_FAILED`, `UPSTREAM_UNAVAILABLE`, `INVALID_INPUT`) for the MCP layer to map to structured tool errors.
+---
 
-## MCP server, client and agent (Phase 3)
+## 3. Data Architecture & Storage
 
-- **`apps/mcp-server`**: Express + the official SDK in stateless Streamable HTTP mode. Only three files touch the SDK/Express (`server.ts`, `http.ts`, `context.ts`/`main.ts`); everything else (config, origin/bearer guard, schema shapes, conformance client) is SDK-free and unit-tested. Tools are registered from `toolContracts`, so schemas, descriptions and handlers cannot drift. See `docs/mcp-tools.md`.
-- **Tool execution layer** (`packages/core/src/tooling.ts`): validates input, runs the service, validates the output against its contract (a result that breaks its own contract, e.g. `CONFIRMED` without evidence, is withheld as `INTERNAL_ERROR`), maps `VeyloError` to a tool error, and hides internals. `decodeToolResult` is its inverse for clients.
-- **`packages/mcp-client`**: typed client over the SDK's Streamable HTTP client; implements `ToolCaller`. The web app and agent use only this.
-- **`packages/agent`**: the planner. It depends on a `ToolCaller`, never on services directly, so every action it takes is an MCP tool call. State is plain JSON, so a UI or an Alexa+ session can hold it between turns.
-- **Wire format** lives in one place (`tooling.ts`): `structuredContent` + JSON text on success; `isError` with `_meta["veylo/error"]` on failure.
+- **DDL Source of Truth:** `packages/db/migrations/*.sql` manages schemas, extensions (`pg_trgm`, `uuid-ossp`), and GIN/trigram indexing.
+- **Typed Schema Mirror:** `packages/db/src/schema.ts` provides compile-time type safety via Drizzle ORM.
+- **Dual-Mode Persistence:** Fully compatible with local containerized PostgreSQL (`docker compose`) or cloud-hosted Supabase instances.
+- **User Hardware & Inventory Memory:** `user_devices` and `user_inventory` tables enable cross-session hardware compatibility deductions (e.g. MacBook Pro M3 $\rightarrow$ USB-C) and prevent redundant purchases.
+- **Bidirectional Relationship Graph:** Models symmetric relationships (`alternative`, `often_confused_with`) and directional dependencies (`replacement_for`, `used_with`, `compatible_with`).
+
+---
+
+## 4. Core Domain Services (`@veylo/core`)
+
+All core business logic is decoupled from HTTP and transport layers behind strict ports:
+- **Ports (`context.ts`):** `ProductRepository`, `PlaceSource`, `Geocoder`, `PlaceStore`, `InventoryEvidenceProvider`, `EvidenceLedger`, `UserContextStore`, and AI assist ports (`IdentifyAssist`, `CompareAssist`).
+- **Services (`services.ts`):** Core handlers for all 11 MCP tools: `identify_product`, `search_products`, `discover_local_places`, `check_local_inventory`, `compare_products`, `get_place_details`, `get_directions`, `contact_store`, `search_web`, `create_shopping_list`, and `get_user_context`.
+- **Catalogue Caching:** Catalog data is indexed in memory and refreshed on a configurable TTL.
+- **Evidence-First Trust Verification:** Local inventory checks reject any `CONFIRMED` status lacking physical store verification.
+
+---
+
+## 5. Model Context Protocol Layer (`apps/mcp-server`)
+
+- **Transport:** Implements the official Model Context Protocol (spec 2025-11-25) using stateless Streamable HTTP on `/mcp`.
+- **Contract Synchronization:** Tools are registered directly from `@veylo/types` contracts (`toolContracts`), guaranteeing that runtime schemas, documentation, and TypeScript interfaces remain strictly synchronized.
+- **Client Library (`@veylo/mcp-client`):** Typed client wrapper providing full loopback testing and error demarcation across network boundaries.

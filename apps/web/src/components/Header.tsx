@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Sparkles, Terminal, ShoppingBag, Radio, ShieldCheck, Cpu } from "lucide-react";
+import { AssistantAvatar, type AssistantMode } from "@/components/AssistantAvatar";
 
 interface HeaderProps {
   traceCount: number;
@@ -11,6 +12,7 @@ interface HeaderProps {
   onOpenAlexaSimulation: () => void;
   aiProvider?: string;
   mcpMode?: string;
+  assistantMode?: AssistantMode;
 }
 
 export function Header({
@@ -21,31 +23,32 @@ export function Header({
   onOpenAlexaSimulation,
   aiProvider = "rules",
   mcpMode = "streamable-http",
+  assistantMode = "idle",
 }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
+    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 shadow-[0_4px_20px_-16px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-2 px-3 sm:h-24 sm:gap-4 sm:px-6 lg:px-8">
         {/* Brand */}
-        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-          <div className="w-9 h-9 shrink-0 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold tracking-tight text-lg shadow-sm">
-            V
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <div className="shrink-0 rounded-full bg-cyan-50 p-0.5 ring-1 ring-cyan-100 sm:p-1">
+            <AssistantAvatar mode={assistantMode} compact nav />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-900 tracking-tight text-lg">Veylo</span>
-              <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-amber-100 text-amber-800 rounded-full border border-amber-200">
+              <span className="text-base font-bold tracking-tight text-slate-950 sm:text-lg">Veylo</span>
+              <span className="hidden md:inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-800">
                 Alexa+ Track
               </span>
-              <span className="hidden md:inline-block px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-blue-100 text-blue-800 rounded-full border border-blue-200">
+              <span className="hidden xl:inline-block rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-blue-800">
                 AWS Builder
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 hidden sm:block">See it. Say it. Find it.</p>
+            <p className="hidden text-[11px] text-slate-500 sm:block">See it. Say it. Find it.</p>
           </div>
         </div>
 
         {/* Status Indicators */}
-        <div className="hidden lg:flex items-center gap-2">
+        <div className="hidden xl:flex items-center gap-2">
           {/* MCP Status */}
           <div
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-700 text-xs"

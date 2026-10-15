@@ -23,7 +23,7 @@ Evidence records carry `source`, `sourceType`, `timestamp`, `confidence`, `evide
 
 ## Product category to store type
 
-`packages/core/src/store-categories.ts` maps each catalogue category to weighted store types (for example `plumbing consumables` -> hardware 1.0, home improvement 1.0, plumbing supply 1.0, bathroom/sanitary 0.6; `video adapters` -> electronics 1.0, computer 0.9, mobile phone 0.6). Weights are relevance, not proof. Places are ordered by `0.7 * fit + 0.3 * proximity`; `relevanceScore` reports fit alone. Callers can override with `storeCategories` hints ("hardware", "sanitary", "home improvement"). If neither the product nor a hint maps to store types, the tool errors with `UNKNOWN_CATEGORY` instead of guessing. OSM tag selectors for each store type live in the same file (`OSM_SELECTORS`) and drive Phase 7's Overpass query.
+`packages/core/src/store-categories.ts` maps each catalogue category to weighted store types (for example `plumbing consumables` -> hardware 1.0, home improvement 1.0, plumbing supply 1.0, bathroom/sanitary 0.6; `video adapters` -> electronics 1.0, computer 0.9, mobile phone 0.6). Weights are relevance, not proof. Places are ordered by `0.7 * fit + 0.3 * proximity`; `relevanceScore` reports fit alone. Callers can override with `storeCategories` hints ("hardware", "sanitary", "home improvement"). If neither the product nor a hint maps to store types, the tool errors with `UNKNOWN_CATEGORY` instead of guessing. OSM tag selectors for each store type live in the same file (`OSM_SELECTORS`) and drive the live Overpass spatial query.
 
 ## How identification matches
 
@@ -39,5 +39,5 @@ Then the optional AI assist runs (see `architecture.md`). Clarification fires wh
 - The rules matcher only understands words that appear in the catalogue. A paraphrase with none of them ("something to unblock the sink") scores low and triggers a question. Closing that gap is what the AI provider is for.
 - Catalogue: 69 curated products. Seed evidence is `curated` and says nothing about stock.
 - No prices anywhere: there is no verified price source, so `compare_products` says so and does not rank on price.
-- Place store and evidence ledger are in memory (single process) until Phase 7 persists them.
+- Place discovery cache and evidence ledger use in-memory TTL caching with database persistence options.
 - `compare_products` understands three requirement keys: `compatibility`, `extraPorts`, `urgency`. Other keys are reported as "Not evaluated".

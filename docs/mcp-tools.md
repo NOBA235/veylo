@@ -26,7 +26,7 @@ pnpm mcp:conformance                       # SDK-free JSON-RPC checks against ht
 npx @modelcontextprotocol/inspector        # MCP Inspector: choose Streamable HTTP, URL above
 ```
 
-`pnpm mcp:conformance` speaks raw JSON-RPC (no SDK) and checks: `initialize` negotiates `2025-11-25`; `notifications/initialized` is accepted; `tools/list` returns exactly the ten tools with input and output schemas; every tool can be called with sample input without a protocol or internal error; invalid arguments and unknown tools are rejected; `GET /mcp` is 405; an unlisted browser `Origin` gets 403; and, when a token is configured, a request without it gets 401. Note it calls `create_shopping_list`, which inserts a row.
+`pnpm mcp:conformance` speaks raw JSON-RPC (no SDK) and checks: `initialize` negotiates `2025-11-25`; `notifications/initialized` is accepted; `tools/list` returns exactly the eleven tools with input and output schemas; every tool can be called with sample input without a protocol or internal error; invalid arguments and unknown tools are rejected; `GET /mcp` is 405; an unlisted browser `Origin` gets 403; and, when a token is configured, a request without it gets 401. Note it calls `create_shopping_list`, which inserts a row.
 
 ## Results and errors
 
@@ -144,6 +144,7 @@ All inputs and outputs are Zod schemas in `packages/types/src/tools.ts`; the ser
 | `contact_store` | A way to contact the store | `storeId`, optional `product` | Returns `tel:` or the website, else `none`. Never places a call or sends a message |
 | `search_web` | Web research fallback | `query`, optional `location`, `limit` | `trust` is always `WEB_FOUND`; needs `BRAVE_SEARCH_API_KEY`, else `NOT_CONFIGURED` |
 | `create_shopping_list` | Persist items to buy | `items[{product, quantity (default 1), notes}]` | Resolves names to catalogue names; stored in Postgres |
+| `get_user_context` | Retrieve user hardware & owned inventory | `userId` (optional, default `"default"`) | Returns registered hardware devices (laptop, phone, connectors) and existing inventory to verify compatibility and prevent redundant purchases |
 
 Live local discovery: implemented in `@veylo/local-discovery` via `OverpassPlaceSource` (OpenStreetMap / Overpass), `NominatimGeocoder` (OpenStreetMap Nominatim), `WebEvidenceProvider` (web mentions & first-party store signals), and `CachedPlaceStore`. In demo mode, Austin fixtures guarantee 100% offline reliability while still supporting live Overpass discovery for any other location.
 

@@ -383,6 +383,7 @@ export default function Home() {
         onOpenAlexaSimulation={() => setIsAlexaSimOpen(true)}
         aiProvider={healthInfo?.ai?.provider || "rules"}
         mcpMode={healthInfo?.mcp?.mode || "streamable-http"}
+        assistantMode={assistantMode}
       />
 
       {/* Main Content Area */}

@@ -1,9 +1,9 @@
-# AWS Builder Mini Challenge Integration
-
-> **Mini Challenge Target:** AWS Builder Mini Challenge  
-> **Primary Track:** Alexa+  
-> **AWS Service Utilized:** Amazon Bedrock (`@aws-sdk/client-bedrock-runtime`)  
-> **Implementation Code:** [`packages/ai/src/providers/bedrock.ts`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/packages/ai/src/providers/bedrock.ts)  
+# Amazon Bedrock AI Integration Architecture
+ 
+> **Architecture:** Amazon Bedrock Enterprise AI Layer  
+> **Interface:** Model Context Protocol (MCP) Spec 2025-11-25  
+> **AWS Service:** Amazon Bedrock (`@aws-sdk/client-bedrock-runtime`)  
+> **Implementation:** [`packages/ai/src/providers/bedrock.ts`](packages/ai/src/providers/bedrock.ts)  
 
 ---
 

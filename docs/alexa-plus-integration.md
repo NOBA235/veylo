@@ -1,9 +1,9 @@
 # Alexa+ Integration Architecture & Capability Guide
 
-> **Primary Hackathon Target:** Alexa+ Track  
-> **Protocol:** Model Context Protocol (MCP) Spec 2025-11-25+ (Streamable HTTP)  
+> **Capability:** Alexa+ Ambient Voice & Multimodal Capability  
+> **Protocol:** Model Context Protocol (MCP) Spec 2025-11-25 (Streamable HTTP)  
 > **Server Endpoint:** `http://127.0.0.1:8787/mcp`  
-> **Interactive Simulation:** Echo Show 10 modal in Veylo Web UI  
+> **Interactive Interface:** Echo Show 10 simulation & Next.js client  
 
 ---
 
