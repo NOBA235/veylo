@@ -645,6 +645,19 @@ export default function Home() {
         category={identified?.category}
         storeName={agentResult?.best?.name || places?.[0]?.name}
         evidenceStatus={agentResult?.best?.status || places?.[0]?.inventoryStatus}
+        answer={agentResult?.answer}
+        userQuery={agentResult?.state.description}
+        confidence={identified?.confidence}
+        traceCount={trace.length}
+        isLoading={isLoading}
+        currentLocation={currentLocation}
+        onAskAlexa={(promptText) =>
+          handleSearch({
+            message: promptText,
+            location: currentLocation,
+            urgency: "today",
+          })
+        }
       />
 
       {/* Minimal Clean Footer */}

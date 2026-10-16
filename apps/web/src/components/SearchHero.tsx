@@ -5,6 +5,30 @@ import { Search, Mic, Image as ImageIcon, MapPin, CornerDownLeft, Sparkles, X } 
 import type { Urgency } from "@veylo/types";
 import { AssistantAvatar, type AssistantMode } from "@/components/AssistantAvatar";
 
+interface SpeechRecognitionEventResult {
+  0: { transcript: string };
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionEvent {
+  results: {
+    length: number;
+    [index: number]: SpeechRecognitionEventResult;
+  };
+}
+
+interface BrowserSpeechRecognition {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
 interface SearchHeroProps {
   onSearch: (params: {
     message: string;
@@ -32,11 +56,19 @@ export function SearchHero({
   const [compatibility, setCompatibility] = useState<string>("");
   const [isListening, setIsListening] = useState(false);
   const listeningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const [showLocationEdit, setShowLocationEdit] = useState(false);
   const [locInput, setLocInput] = useState(currentLocation);
 
   useEffect(() => () => {
     if (listeningTimer.current) clearTimeout(listeningTimer.current);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {
+        // ignore
+      }
+    }
   }, []);
 
   const handleSubmit = (e?: React.FormEvent) => {
@@ -69,6 +101,14 @@ export function SearchHero({
       clearTimeout(listeningTimer.current);
       listeningTimer.current = null;
     }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // ignore
+      }
+      recognitionRef.current = null;
+    }
     if (isListening) {
       setIsListening(false);
       onListeningChange(false);
@@ -80,9 +120,54 @@ export function SearchHero({
       cancelListeningPreview();
       return;
     }
+
+    const win = typeof window !== "undefined" ? (window as unknown as Record<string, unknown>) : {};
+    const SpeechRecognitionCtor = (win.SpeechRecognition || win.webkitSpeechRecognition) as
+      | (new () => BrowserSpeechRecognition)
+      | undefined;
+
+    if (SpeechRecognitionCtor) {
+      try {
+        const recognition = new SpeechRecognitionCtor();
+        recognition.lang = "en-US";
+        recognition.continuous = false;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
+          let transcript = "";
+          for (let i = 0; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+          }
+          if (transcript.trim()) {
+            setQuery(transcript);
+          }
+        };
+
+        recognition.onerror = () => {
+          setIsListening(false);
+          onListeningChange(false);
+          recognitionRef.current = null;
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+          onListeningChange(false);
+          recognitionRef.current = null;
+        };
+
+        recognitionRef.current = recognition;
+        setIsListening(true);
+        onListeningChange(true);
+        recognition.start();
+        return;
+      } catch {
+        // Fallback if speech recognition cannot start
+      }
+    }
+
+    // Fallback for browsers without Web Speech API
     setIsListening(true);
     onListeningChange(true);
-    // Simulate speech-to-text input after 1.5s
     listeningTimer.current = setTimeout(() => {
       setQuery("I need that little thing that lets me connect my laptop to a TV. I don't know what it's called.");
       setIsListening(false);
@@ -222,31 +307,31 @@ export function SearchHero({
 
             {/* Input Action Buttons */}
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              {/* Mic / Voice Simulation */}
+              {/* Live Voice Input (Web Speech API) */}
               <button
                 type="button"
                 onClick={toggleMic}
                 disabled={isLoading}
-                className={`min-h-10 min-w-10 rounded-lg border p-2 transition-all ${
+                className={`min-h-10 min-w-10 rounded-lg border p-2 transition-all flex items-center justify-center gap-1.5 ${
                   isLoading
                     ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300"
                     : isListening
-                    ? "bg-red-50 border-red-300 text-red-600 animate-pulse"
+                    ? "bg-red-50 border-red-300 text-red-600 animate-pulse px-2.5"
                     : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                 }`}
-                title="Voice preview · no audio is recorded"
-                aria-label={isListening ? "Stop listening preview" : "Start listening preview"}
+                title={isListening ? "Listening... Click to stop" : "Speak your product request"}
+                aria-label={isListening ? "Stop voice input" : "Start voice input"}
               >
-                <Mic className="w-4 h-4" />
+                <Mic className="w-4 h-4 shrink-0" />
+                {isListening && <span className="text-[11px] font-semibold">Listening...</span>}
               </button>
-              <span className="-ml-1 mr-auto text-[10px] text-slate-400 sm:mr-0">Preview</span>
 
-              {/* Image Input (Feature flag preview) */}
+              {/* Image Input */}
               <button
                 type="button"
-                onClick={() => alert("Image identification is available behind ENABLE_IMAGE_IDENTIFICATION=true in Phase 6.")}
-                className="min-h-10 min-w-10 rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
-                title="Visual product photo upload (Phase 6)"
+                onClick={() => alert("Visual camera & photo identification is available when ENABLE_IMAGE_IDENTIFICATION=true is enabled.")}
+                className="min-h-10 min-w-10 rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 mr-auto sm:mr-0"
+                title="Visual product photo upload"
               >
                 <ImageIcon className="w-4 h-4" />
               </button>
