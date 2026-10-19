@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { HelpCircle, CornerDownLeft } from "lucide-react";
+import { HelpCircle, ArrowRight } from "lucide-react";
 
 interface ClarificationCardProps {
   question: {
@@ -12,22 +12,37 @@ interface ClarificationCardProps {
   isLoading: boolean;
 }
 
-export function ClarificationCard({ question, onAnswer, isLoading }: ClarificationCardProps) {
+export function ClarificationCard({
+  question,
+  onAnswer,
+  isLoading,
+}: ClarificationCardProps) {
   const [customAnswer, setCustomAnswer] = useState("");
 
-  // Determine smart quick-reply suggestions based on the question text
   const getSuggestions = () => {
     const q = question.text.toLowerCase();
-    if (q.includes("today") || q.includes("online") || question.field === "urgency") {
-      return ["Yes, I need one nearby today", "I can wait, online order is fine"];
+    if (
+      q.includes("today") ||
+      q.includes("online") ||
+      question.field === "urgency"
+    ) {
+      return ["Need it nearby today", "Online delivery is fine"];
     }
-    if (q.includes("usb-c") || q.includes("lightning") || q.includes("connector")) {
+    if (
+      q.includes("usb-c") ||
+      q.includes("lightning") ||
+      q.includes("connector")
+    ) {
       return ["USB-C", "Lightning", "Micro-USB"];
     }
     if (q.includes("hdmi") || q.includes("port") || q.includes("hub")) {
-      return ["Just HDMI", "HDMI and extra USB ports", "A full multi-port hub"];
+      return ["Standard HDMI", "HDMI adapter", "Multi-port hub"];
     }
-    if (q.includes("where") || q.includes("location") || question.field === "location") {
+    if (
+      q.includes("where") ||
+      q.includes("location") ||
+      question.field === "location"
+    ) {
       return ["Austin, TX", "Current location", "Nearby downtown"];
     }
     return ["Yes", "No", "Either is fine"];
@@ -43,61 +58,62 @@ export function ClarificationCard({ question, onAnswer, isLoading }: Clarificati
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto my-6 p-5 sm:p-6 bg-amber-50/60 border border-amber-200/80 rounded-2xl shadow-sm">
+    <div className="w-full rounded-xl border border-amber-200/80 bg-amber-50/40 p-4 sm:p-5 shadow-xs">
       <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
-          <HelpCircle className="w-4 h-4 text-amber-700" />
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
+          <HelpCircle className="h-4 w-4" />
         </div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-800">
-              Clarification Needed
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-800">
+              Clarification
             </span>
-            <span className="text-[11px] text-amber-700/80 font-medium">
-              (Improves Accuracy)
+            <span className="text-zinc-300">•</span>
+            <span className="text-xs text-zinc-500">
+              Helps confirm exact store inventory
             </span>
           </div>
 
-          <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-2">
-            &ldquo;{question.text}&rdquo;
+          <h3 className="text-sm sm:text-base font-semibold text-zinc-900 mb-1">
+            {question.text}
           </h3>
 
-          <p className="text-xs text-slate-600 mb-4">
-            Veylo avoids guessing when ambiguity materially impacts real-world store availability.
+          <p className="text-xs text-zinc-500 mb-3.5">
+            Select an option or type a quick reply to continue search.
           </p>
 
-          {/* Quick-choice suggestions */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {suggestions.map((s) => (
+          {/* Quick choices */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {suggestions.map((suggestion) => (
               <button
-                key={s}
+                key={suggestion}
                 type="button"
-                onClick={() => onAnswer(s)}
+                onClick={() => onAnswer(suggestion)}
                 disabled={isLoading}
-                className="px-3 py-1.5 rounded-lg bg-white hover:bg-amber-100 text-xs font-medium text-slate-800 border border-amber-200 hover:border-amber-300 transition-colors shadow-2xs"
+                className="rounded-md border border-amber-200/80 bg-white px-2.5 py-1 text-xs font-medium text-zinc-800 transition-colors hover:border-amber-300 hover:bg-amber-50/80 disabled:opacity-50"
               >
-                {s}
+                {suggestion}
               </button>
             ))}
           </div>
 
-          {/* Custom text response input */}
-          <form onSubmit={handleSubmit} className="flex gap-2">
+          {/* Custom reply input */}
+          <form onSubmit={handleSubmit} className="flex gap-1.5">
             <input
               type="text"
               value={customAnswer}
               onChange={(e) => setCustomAnswer(e.target.value)}
-              placeholder="Or type your specific requirement here..."
+              placeholder="Or type a specific requirement..."
               disabled={isLoading}
-              className="flex-1 px-3 py-2 text-xs sm:text-sm bg-white border border-amber-200 rounded-lg focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 placeholder:text-slate-400"
+              className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs sm:text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-800 focus:outline-none"
             />
             <button
               type="submit"
               disabled={isLoading || !customAnswer.trim()}
-              className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0 flex items-center gap-1.5"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-zinc-900 px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-40"
             >
               <span>Reply</span>
-              <CornerDownLeft className="w-3.5 h-3.5" />
+              <ArrowRight className="h-3 w-3" />
             </button>
           </form>
         </div>
@@ -105,4 +121,3 @@ export function ClarificationCard({ question, onAnswer, isLoading }: Clarificati
     </div>
   );
 }
-

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Search, Mic, Image as ImageIcon, MapPin, CornerDownLeft, Sparkles, X } from "lucide-react";
+import { Search, Mic, MapPin, ArrowRight, X, Check } from "lucide-react";
 import type { Urgency } from "@veylo/types";
 import { AssistantAvatar, type AssistantMode } from "@/components/AssistantAvatar";
 
@@ -43,6 +43,30 @@ interface SearchHeroProps {
   onListeningChange: (listening: boolean) => void;
 }
 
+const EXAMPLE_PROMPTS = [
+  {
+    label: "Laptop to TV adapter",
+    query: "I need that little thing that lets me connect my laptop to a TV. I don't know what it's called.",
+    urgency: "today" as Urgency,
+    compatibility: "USB-C",
+  },
+  {
+    label: "Plumber's pipe thread tape",
+    query: "I need the white tape plumbers use around pipe threads.",
+    urgency: "today" as Urgency,
+  },
+  {
+    label: "Phone fast-charging cable",
+    query: "I need a fast charging cable for my phone.",
+    urgency: "today" as Urgency,
+  },
+  {
+    label: "Bike valve adapter",
+    query: "An adapter so I can pump my road bike tire with a gas station air pump.",
+    urgency: "today" as Urgency,
+  },
+];
+
 export function SearchHero({
   onSearch,
   isLoading,
@@ -59,17 +83,42 @@ export function SearchHero({
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const [showLocationEdit, setShowLocationEdit] = useState(false);
   const [locInput, setLocInput] = useState(currentLocation);
+  const locationPopRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => () => {
-    if (listeningTimer.current) clearTimeout(listeningTimer.current);
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.abort();
-      } catch {
-        // ignore
+  useEffect(() => {
+    setLocInput(currentLocation);
+  }, [currentLocation]);
+
+  useEffect(() => {
+    return () => {
+      if (listeningTimer.current) clearTimeout(listeningTimer.current);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {
+          // ignore
+        }
+      }
+    };
+  }, []);
+
+  // Close location popover on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        locationPopRef.current &&
+        !locationPopRef.current.contains(event.target as Node)
+      ) {
+        setShowLocationEdit(false);
       }
     }
-  }, []);
+    if (showLocationEdit) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showLocationEdit]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -83,7 +132,11 @@ export function SearchHero({
     });
   };
 
-  const handleQuickPrompt = (promptText: string, defaultUrgency: Urgency = "today", defaultCompat?: string) => {
+  const handleQuickPrompt = (
+    promptText: string,
+    defaultUrgency: Urgency = "today",
+    defaultCompat?: string
+  ) => {
     cancelListeningPreview();
     setQuery(promptText);
     setUrgency(defaultUrgency);
@@ -121,8 +174,12 @@ export function SearchHero({
       return;
     }
 
-    const win = typeof window !== "undefined" ? (window as unknown as Record<string, unknown>) : {};
-    const SpeechRecognitionCtor = (win.SpeechRecognition || win.webkitSpeechRecognition) as
+    const win =
+      typeof window !== "undefined"
+        ? (window as unknown as Record<string, unknown>)
+        : {};
+    const SpeechRecognitionCtor = (win.SpeechRecognition ||
+      win.webkitSpeechRecognition) as
       | (new () => BrowserSpeechRecognition)
       | undefined;
 
@@ -161,15 +218,17 @@ export function SearchHero({
         recognition.start();
         return;
       } catch {
-        // Fallback if speech recognition cannot start
+        // Fallback if browser permission fails
       }
     }
 
-    // Fallback for browsers without Web Speech API
+    // Fallback simulation for testing
     setIsListening(true);
     onListeningChange(true);
     listeningTimer.current = setTimeout(() => {
-      setQuery("I need that little thing that lets me connect my laptop to a TV. I don't know what it's called.");
+      setQuery(
+        "I need that little thing that lets me connect my laptop to a TV. I don't know what it's called."
+      );
       setIsListening(false);
       onListeningChange(false);
       listeningTimer.current = null;
@@ -177,29 +236,67 @@ export function SearchHero({
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl pt-4 pb-4 sm:pt-6">
-      {/* Ambiguity Welcome */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200 mb-3">
-          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>Ambiguous Physical Shopping Capability</span>
+    <section className="mx-auto w-full max-w-3xl pt-4 pb-2 sm:pt-8 sm:pb-4">
+      {/* Centered Alexa+ AI Assistant Avatar */}
+      <div className="flex flex-col items-center justify-center mb-4 sm:mb-5">
+        <button
+          type="button"
+          onClick={toggleMic}
+          disabled={isLoading}
+          aria-label={isListening ? "Listening... click to stop" : "Speak to Alexa+"}
+          className="relative group p-1.5 rounded-full transition-all hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+          title={isListening ? "Listening... Click to stop" : "Click to speak with Alexa+"}
+        >
+          <AssistantAvatar
+            mode={isListening ? "listening" : assistantMode}
+            size="lg"
+            animationOnly
+          />
+        </button>
+        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100/80 border border-zinc-200/80 text-[11px] font-medium text-zinc-600">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              isListening
+                ? "bg-amber-500 animate-ping"
+                : assistantMode === "thinking"
+                  ? "bg-cyan-500 animate-spin"
+                  : assistantMode === "speaking"
+                    ? "bg-cyan-600"
+                    : "bg-cyan-500"
+            }`}
+          />
+          <span>
+            {isListening
+              ? "Alexa+ Listening..."
+              : assistantMode === "thinking"
+                ? "Reasoning with MCP..."
+                : assistantMode === "speaking"
+                  ? "Speaking..."
+                  : "Alexa+ Ready"}
+          </span>
         </div>
-        <div className="mb-2 flex items-center justify-center gap-2.5 sm:gap-4">
-          <AssistantAvatar mode={isListening ? "listening" : assistantMode} compact />
-          <h1 className="max-w-[17ch] text-left text-xl font-semibold tracking-tight text-slate-900 sm:max-w-none sm:text-4xl">
-            What are you trying to find?
-          </h1>
-        </div>
-        <p className="mx-auto max-w-2xl px-2 text-sm text-slate-600 sm:px-0 sm:text-base">
-          Don&apos;t know the name? Don&apos;t know the store? Describe what it does or what it looks like.
+      </div>
+
+      {/* Editorial Title */}
+      <div className="mb-5 text-center sm:mb-8">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-zinc-950">
+          Find what you need in local stores
+        </h1>
+        <p className="mt-2 text-xs sm:text-sm md:text-base text-zinc-500 max-w-xl mx-auto leading-relaxed">
+          Describe what the item looks like, what it does, or what it connects to.
+          Veylo identifies the product and checks shelf availability.
         </p>
       </div>
 
-      {/* Main Search Input Form */}
-      <form onSubmit={handleSubmit} className="relative mb-4">
-        <div className="relative flex flex-col rounded-2xl border border-slate-300 bg-white p-3 shadow-sm transition-all hover:border-slate-400 focus-within:border-slate-900 focus-within:ring-2 focus-within:ring-slate-900/10 sm:p-4">
-          <div className="flex items-start gap-3">
-            <Search className="w-5 h-5 text-slate-400 mt-1 shrink-0" />
+      {/* Main Search Composer */}
+      <form
+        onSubmit={handleSubmit}
+        className="relative w-full overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xs transition-all focus-within:border-zinc-400 focus-within:ring-1 focus-within:ring-zinc-400/20"
+      >
+        {/* Input Area */}
+        <div className="p-3 sm:p-4 pb-2">
+          <div className="flex items-start gap-2.5">
+            <Search className="mt-1 h-4 w-4 shrink-0 text-zinc-400" />
             <textarea
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -210,191 +307,176 @@ export function SearchHero({
                 }
               }}
               rows={2}
-              placeholder="e.g. 'I need that little thing that lets me connect my laptop to a TV. I don't know what it's called...'"
-              className="w-full min-w-0 resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-slate-900 outline-none placeholder:text-slate-400 focus:ring-0 sm:text-base pr-6"
+              placeholder="e.g. I need that little thing that lets me connect my laptop to a TV..."
+              className="w-full min-w-0 resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-zinc-900 outline-none placeholder:text-zinc-400 focus:ring-0 sm:text-base"
               disabled={isLoading}
+              aria-label="Describe what you are looking for"
             />
             {query && !isLoading && (
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors shrink-0 mt-0.5"
+                className="mt-0.5 shrink-0 rounded p-1 text-zinc-400 hover:text-zinc-600 transition-colors"
                 title="Clear input"
                 aria-label="Clear input"
               >
-                <X className="w-4 h-4" />
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
+        </div>
 
-          {/* Controls Bar inside Input */}
-          <div className="mt-2 flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
-            {/* Quick Context Chips */}
-            <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
-              {/* Location Pill */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowLocationEdit(!showLocationEdit)}
-                  className="flex min-h-9 max-w-full items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-700 transition-colors hover:bg-slate-100"
-                >
-                  <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                  <span className="max-w-[13rem] truncate">{currentLocation}</span>
-                </button>
-                {showLocationEdit && (
-                  <div className="absolute top-8 left-0 z-50 w-64 p-2 bg-white rounded-lg shadow-lg border border-slate-200">
-                    <label className="block text-[11px] font-medium text-slate-500 mb-1">Search Location</label>
-                    <div className="flex gap-1.5">
-                      <input
-                        type="text"
-                        value={locInput}
-                        onChange={(e) => setLocInput(e.target.value)}
-                        placeholder="e.g. Austin, TX"
-                        className="w-full min-w-0 rounded border border-slate-300 px-2 py-2 text-xs focus:border-slate-800 focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
+        {/* Composer Controls Bar */}
+        <div className="flex flex-col gap-2 border-t border-zinc-100 bg-zinc-50/50 p-2.5 sm:p-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Location & Urgency Context */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* Location Selector */}
+            <div className="relative" ref={locationPopRef}>
+              <button
+                type="button"
+                onClick={() => setShowLocationEdit(!showLocationEdit)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 transition-colors"
+                title="Change search location"
+              >
+                <MapPin className="h-3 w-3 text-zinc-400 shrink-0" />
+                <span className="max-w-[7.5rem] sm:max-w-[10rem] truncate">{currentLocation}</span>
+              </button>
+
+              {showLocationEdit && (
+                <div className="absolute top-8 left-0 z-50 w-60 rounded-lg border border-zinc-200 bg-white p-2.5 shadow-lg">
+                  <label className="block text-[11px] font-medium text-zinc-500 mb-1">
+                    Search location
+                  </label>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={locInput}
+                      onChange={(e) => setLocInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
                           onLocationChange(locInput.trim() || "Austin, TX");
                           setShowLocationEdit(false);
-                        }}
-                        className="min-h-9 rounded bg-slate-900 px-3 py-1 text-xs text-white hover:bg-slate-800"
-                      >
-                        Set
-                      </button>
-                    </div>
+                        }
+                      }}
+                      placeholder="e.g. Austin, TX"
+                      className="w-full rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-900 focus:border-zinc-800 focus:outline-none"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onLocationChange(locInput.trim() || "Austin, TX");
+                        setShowLocationEdit(false);
+                      }}
+                      className="inline-flex items-center justify-center rounded bg-zinc-900 px-2 py-1 text-xs font-medium text-white hover:bg-zinc-800"
+                    >
+                      <Check className="h-3 w-3" />
+                    </button>
                   </div>
-                )}
-              </div>
-
-              {/* Urgency Selector */}
-              <div className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-md border border-slate-200 bg-slate-50 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setUrgency("today")}
-                  className={`min-h-8 shrink-0 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                    urgency === "today"
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Nearby Today
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUrgency("this_week")}
-                  className={`min-h-8 shrink-0 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                    urgency === "this_week"
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  This Week
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUrgency("online")}
-                  className={`min-h-8 shrink-0 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                    urgency === "online"
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Online Only
-                </button>
-              </div>
+                </div>
+              )}
             </div>
 
-            {/* Input Action Buttons */}
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              {/* Live Voice Input (Web Speech API) */}
+            {/* Urgency Segmented Control */}
+            <div className="inline-flex rounded-md border border-zinc-200 bg-white p-0.5 text-xs">
               <button
                 type="button"
-                onClick={toggleMic}
-                disabled={isLoading}
-                className={`min-h-10 min-w-10 rounded-lg border p-2 transition-all flex items-center justify-center gap-1.5 ${
-                  isLoading
-                    ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300"
-                    : isListening
-                    ? "bg-red-50 border-red-300 text-red-600 animate-pulse px-2.5"
-                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                onClick={() => setUrgency("today")}
+                className={`rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                  urgency === "today"
+                    ? "bg-zinc-900 text-white shadow-2xs"
+                    : "text-zinc-600 hover:text-zinc-900"
                 }`}
-                title={isListening ? "Listening... Click to stop" : "Speak your product request"}
-                aria-label={isListening ? "Stop voice input" : "Start voice input"}
               >
-                <Mic className="w-4 h-4 shrink-0" />
-                {isListening && <span className="text-[11px] font-semibold">Listening...</span>}
+                Today
               </button>
-
-              {/* Image Input */}
               <button
                 type="button"
-                onClick={() => alert("Visual camera & photo identification is available when ENABLE_IMAGE_IDENTIFICATION=true is enabled.")}
-                className="min-h-10 min-w-10 rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 mr-auto sm:mr-0"
-                title="Visual product photo upload"
+                onClick={() => setUrgency("this_week")}
+                className={`rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                  urgency === "this_week"
+                    ? "bg-zinc-900 text-white shadow-2xs"
+                    : "text-zinc-600 hover:text-zinc-900"
+                }`}
               >
-                <ImageIcon className="w-4 h-4" />
+                This week
               </button>
-
-              {/* Submit Button */}
               <button
-                type="submit"
-                disabled={isLoading || !query.trim()}
-                className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-4 sm:text-sm"
+                type="button"
+                onClick={() => setUrgency("online")}
+                className={`rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                  urgency === "online"
+                    ? "bg-zinc-900 text-white shadow-2xs"
+                    : "text-zinc-600 hover:text-zinc-900"
+                }`}
               >
-                {isLoading ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Investigating...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Identify & Find</span>
-                    <CornerDownLeft className="w-3.5 h-3.5 text-slate-400" />
-                  </>
-                )}
+                Online
               </button>
             </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex w-full sm:w-auto items-center justify-between sm:justify-end gap-1.5 pt-1 sm:pt-0 border-t border-zinc-100 sm:border-0">
+            {/* Voice Input */}
+            <button
+              type="button"
+              onClick={toggleMic}
+              disabled={isLoading}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                isListening
+                  ? "bg-rose-50 border border-rose-200 text-rose-700 animate-quiet-pulse"
+                  : "border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+              }`}
+              title={isListening ? "Listening... click to stop" : "Speak request"}
+              aria-label={isListening ? "Stop listening" : "Start voice input"}
+            >
+              <Mic className="h-3 w-3" />
+              <span>{isListening ? "Listening..." : "Speak"}</span>
+            </button>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading || !query.trim()}
+              className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isLoading ? (
+                <>
+                  <div className="h-3 w-3 rounded-full border-2 border-white/30 border-t-white animate-quiet-spin" />
+                  <span>Searching...</span>
+                </>
+              ) : (
+                <>
+                  <span>Find</span>
+                  <ArrowRight className="h-3 w-3 text-zinc-400" />
+                </>
+              )}
+            </button>
           </div>
         </div>
       </form>
 
-      {/* Popular Inquiries / Quick Prompts */}
-      <div className="flex flex-col items-start gap-2 text-xs text-slate-500 sm:flex-row sm:items-center">
-        <span className="font-medium text-slate-700 shrink-0">Popular searches:</span>
-        <div className="flex w-full flex-nowrap gap-1.5 overflow-x-auto pb-1 sm:w-auto sm:flex-wrap sm:overflow-visible sm:pb-0">
+      {/* Understated Example Prompts */}
+      <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
+        <span className="text-zinc-400 font-normal mr-0.5 text-[11px]">Suggestions:</span>
+        {EXAMPLE_PROMPTS.map((prompt) => (
           <button
+            key={prompt.label}
             type="button"
             onClick={() =>
               handleQuickPrompt(
-                "I need that little thing that lets me connect my laptop to a TV. I don't know what it's called.",
-                "today",
-                "USB-C"
+                prompt.query,
+                prompt.urgency,
+                prompt.compatibility
               )
             }
-            className="shrink-0 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-left text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 font-medium"
+            className="rounded-md border border-zinc-200/80 bg-white px-2 py-0.5 text-[11px] text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900"
           >
-            🔌 Laptop to TV Adapter
+            {prompt.label}
           </button>
-          <button
-            type="button"
-            onClick={() =>
-              handleQuickPrompt("I need the white tape plumbers use around pipe threads.")
-            }
-            className="shrink-0 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-left text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 font-medium"
-          >
-            🔧 Plumber&apos;s Seal Tape
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickPrompt("I need a cable to charge my phone.")}
-            className="shrink-0 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-left text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 font-medium"
-          >
-            📱 Phone Charging Cable
-          </button>
-        </div>
+        ))}
       </div>
-    </div>
+    </section>
   );
 }
-

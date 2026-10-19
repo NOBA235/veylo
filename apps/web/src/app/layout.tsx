@@ -1,10 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
-  title: "Veylo — See it. Say it. Find it. | Alexa+ Physical Shopping Capability",
+  title: "Veylo — See it. Say it. Find it.",
   description:
-    "Turns ambiguous human requests into concrete real-world shopping actions. Built for the Amazon Developer Hackathon (Alexa+ Track & AWS Builder Mini Challenge) using self-hosted MCP (Streamable HTTP, spec 2025-11-25).",
+    "Turns ambiguous human requests into concrete real-world shopping actions. Identifies products, verifies physical inventory, and finds nearby local stores.",
 };
 
 export default function RootLayout({
@@ -14,10 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-900 flex flex-col antialiased selection:bg-slate-900 selection:text-white">
+      <body className="min-h-screen bg-[#fbfbfd] text-zinc-900 flex flex-col antialiased selection:bg-zinc-900 selection:text-white">
         {children}
       </body>
     </html>
   );
 }
-

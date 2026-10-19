@@ -14,8 +14,8 @@ import { ShoppingListDrawer, type ShoppingItem } from "@/components/ShoppingList
 import { StoreModal } from "@/components/StoreModal";
 import { DirectionsModal } from "@/components/DirectionsModal";
 import { AlexaSimulationModal } from "@/components/AlexaSimulationModal";
-import type { AssistantMode } from "@/components/AssistantAvatar";
-import { Sparkles, Square, Volume2, PackageCheck, RotateCcw } from "lucide-react";
+import { AssistantAvatar, type AssistantMode } from "@/components/AssistantAvatar";
+import { Square, Volume2, PackageCheck, RotateCcw } from "lucide-react";
 
 export default function Home() {
   const [agentResult, setAgentResult] = useState<AgentResult | null>(null);
@@ -62,7 +62,7 @@ export default function Home() {
       .catch((err) => console.warn("Could not fetch health:", err));
   }, []);
 
-  // Helper to execute agent with real-time SSE progressive trace streaming (Section 37.1)
+  // Helper to execute agent with real-time SSE progressive trace streaming
   const executeAgentWithStream = async (
     payload: Record<string, unknown>,
     onStep: (step: TraceStep) => void
@@ -238,7 +238,7 @@ export default function Home() {
     }
   };
 
-  // Clear / Reset search back to fresh clean state
+  // Reset search back to fresh state
   const handleResetSearch = () => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
@@ -371,6 +371,7 @@ export default function Home() {
   const checks = agentResult?.state.checks;
   const trace = isStreaming ? liveTrace : (agentResult?.trace ?? liveTrace);
   const stepsUsed = isStreaming ? liveTrace.length : (agentResult?.stepsUsed ?? liveTrace.length);
+  const latestStep = liveTrace[liveTrace.length - 1];
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
@@ -387,7 +388,7 @@ export default function Home() {
       />
 
       {/* Main Content Area */}
-      <main className="mx-auto w-full max-w-5xl flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <main className="mx-auto w-full max-w-4xl flex-1 px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
         {/* Search Hero */}
         <SearchHero
           onSearch={handleSearch}
@@ -398,126 +399,53 @@ export default function Home() {
           onListeningChange={setIsListening}
         />
 
-        {/* Progressive Agent Trace Stream: Live feed during search (Section 37.1) */}
+        {/* Calm Progressive Status Feed during Search */}
         {isLoading && (
-          <div className="my-5 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur-xs animate-in fade-in duration-200 sm:my-6 sm:p-5">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-2.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
-                <span className="font-semibold text-slate-900 text-sm">
-                  Veylo Agent Progressive Trace (Live)
+          <div className="my-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-xs animate-in fade-in duration-200">
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <AssistantAvatar mode="thinking" size="sm" animationOnly />
+                <span className="font-medium text-zinc-900 truncate">
+                  {latestStep?.decision || "Analyzing query and querying store directory..."}
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-blue-50 text-blue-700 border border-blue-200">
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="font-mono text-[11px] text-zinc-500">
                   Step {liveTrace.length}/8
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsTraceOpen(true)}
+                  className="text-zinc-600 hover:text-zinc-900 font-medium underline-offset-2 hover:underline"
+                >
+                  View trace
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsTraceOpen(true)}
-                  className="min-h-9 shrink-0 text-left text-xs font-medium text-blue-600 transition-colors hover:text-blue-800"
-              >
-                Inspect Full Log →
-              </button>
             </div>
-
-            {liveTrace.length === 0 ? (
-              <div className="py-6 text-center flex flex-col items-center justify-center gap-2.5">
-                <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin" />
-                <p className="text-xs font-medium text-slate-600">
-                  Negotiating MCP tools & analyzing query intent...
-                </p>
-                <p className="text-[11px] text-slate-400 font-mono">
-                  Streaming execution steps via SSE from MCP server
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-                {liveTrace.map((step) => {
-                  const isTool = step.kind === "tool";
-                  const isAsk = step.kind === "ask";
-                  const isStop = step.kind === "stop";
-
-                  return (
-                    <div
-                      key={step.step}
-                      className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs animate-in fade-in slide-in-from-bottom-2 duration-300"
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-mono font-bold shrink-0">
-                            {step.step}
-                          </span>
-                          {isTool && (
-                            <span className="font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 text-[11px]">
-                              {step.tool}()
-                            </span>
-                          )}
-                          {isAsk && (
-                            <span className="font-mono font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[11px]">
-                              ask_user()
-                            </span>
-                          )}
-                          {isStop && (
-                            <span className="font-mono font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 text-[11px]">
-                              stop_planner()
-                            </span>
-                          )}
-                        </div>
-                        {step.provider && (
-                          <span className="font-mono text-[10px] text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                            {step.provider}
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-slate-800 text-xs font-medium leading-relaxed pl-7">
-                        {step.decision}
-                      </p>
-
-                      {(step.confidenceChange || (step.evidenceAdded !== undefined && step.evidenceAdded > 0)) && (
-                        <div className="flex items-center gap-3 pl-7 mt-1.5 text-[11px] text-slate-500">
-                          {step.confidenceChange && (
-                            <span>
-                              Confidence: {step.confidenceChange.from !== undefined ? `${Math.round(step.confidenceChange.from * 100)}% → ` : ""}
-                              <strong className="text-slate-700">{Math.round(step.confidenceChange.to * 100)}%</strong>
-                            </span>
-                          )}
-                          {step.evidenceAdded !== undefined && step.evidenceAdded > 0 && (
-                            <span>
-                              Evidence: <strong className="text-emerald-700">+{step.evidenceAdded}</strong>
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
         )}
 
         {/* Results Progression */}
         {agentResult && !isLoading && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Results Action Bar with Clear / New Search */}
-            <div className="flex items-center justify-between gap-3 pb-1 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Search results verified via MCP (evidence-first)</span>
+          <div className="mt-8 space-y-6 animate-in fade-in duration-200">
+            {/* Action Bar with Query Feedback & Reset Button */}
+            <div className="flex items-center justify-between gap-3 pb-2 border-b border-zinc-200 text-xs">
+              <div className="flex items-center gap-2 text-zinc-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span>Verified results for Austin, TX</span>
               </div>
               <button
                 type="button"
                 onClick={handleResetSearch}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 text-xs font-medium shadow-2xs transition-all active:scale-95"
-                title="Reset dashboard and start a new search"
+                className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900"
+                title="Start a new search"
               >
-                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                <span>Clear / New Search</span>
+                <RotateCcw className="h-3 w-3 text-zinc-400" />
+                <span>New search</span>
               </button>
             </div>
 
-            {/* 1. Clarification Card if agent needs input */}
+            {/* 1. Clarification Card (First if agent needs user reply) */}
             {agentResult.status === "needs_input" && agentResult.question && (
               <ClarificationCard
                 question={agentResult.question}
@@ -526,50 +454,53 @@ export default function Home() {
               />
             )}
 
-            {/* User Inventory Owned Item Warning (Section 37.2) */}
+            {/* User Owned Hardware Memory Notice */}
             {agentResult.state.ownedWarning && (
-              <div className="p-4 bg-amber-50/90 border border-amber-300 rounded-2xl flex items-start gap-3 text-amber-900 shadow-xs animate-in fade-in duration-200">
-                <div className="p-2 bg-amber-100 rounded-xl border border-amber-300 text-amber-800 shrink-0 mt-0.5">
-                  <PackageCheck className="w-5 h-5 text-amber-700" />
-                </div>
-                <div className="flex-1 text-xs sm:text-sm">
-                  <div className="font-semibold text-amber-950 mb-0.5 flex items-center gap-2">
-                    <span>Hardware & Inventory Memory</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 font-bold">
-                      Redundant Purchase Prevented
-                    </span>
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-800 shadow-2xs">
+                <div className="flex items-start gap-2.5">
+                  <div className="mt-0.5 rounded-md bg-zinc-200 p-1 text-zinc-700">
+                    <PackageCheck className="h-4 w-4" />
                   </div>
-                  <p className="font-medium text-amber-900 leading-relaxed">
-                    {agentResult.state.ownedWarning}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-zinc-900 mb-0.5">
+                      Hardware memory notice
+                    </div>
+                    <p className="text-zinc-600 leading-relaxed">
+                      {agentResult.state.ownedWarning}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* 2. Plain Language Answer Banner */}
+            {/* 2. Plain Language Assistant Answer */}
             {agentResult.answer && (
-              <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs flex items-start gap-3">
-                <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 shrink-0 mt-0.5">
-                  <Sparkles className="w-4 h-4 text-emerald-700" />
+              <div className="rounded-xl border border-zinc-200 bg-white p-4 sm:p-5 shadow-xs">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                    Summary
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSpeakAnswer}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900 transition-colors"
+                  >
+                    {isSpeaking ? (
+                      <>
+                        <Square className="h-3 w-3 fill-current text-zinc-700" />
+                        <span>Stop</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="h-3.5 w-3.5 text-zinc-500" />
+                        <span>Listen</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      What I found
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleSpeakAnswer}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-800"
-                    >
-                      {isSpeaking ? <Square className="h-3 w-3 fill-current" /> : <Volume2 className="h-3.5 w-3.5" />}
-                      {isSpeaking ? "Stop" : "Hear answer"}
-                    </button>
-                  </div>
-                  <p className="text-sm sm:text-base font-medium text-slate-900 leading-relaxed">
-                    {agentResult.answer}
-                  </p>
-                </div>
+                <p className="text-sm sm:text-base font-medium text-zinc-900 leading-relaxed">
+                  {agentResult.answer}
+                </p>
               </div>
             )}
 
@@ -660,24 +591,23 @@ export default function Home() {
         }
       />
 
-      {/* Minimal Clean Footer */}
-      <footer className="border-t border-slate-200 bg-white/60 py-6 mt-12 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+      {/* Restrained Calm Footer */}
+      <footer className="mt-16 border-t border-zinc-200/80 bg-white py-6 text-xs text-zinc-500">
+        <div className="mx-auto flex max-w-4xl flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-6 lg:px-8 text-center sm:text-left">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-800">Veylo</span>
-            <span>•</span>
-            <span>Amazon Developer Hackathon (Alexa+ Track & AWS Builder Mini Challenge)</span>
+            <span className="font-semibold text-zinc-800">Veylo</span>
+            <span className="text-zinc-300">•</span>
+            <span>See it. Say it. Find it.</span>
           </div>
-          <div className="flex items-center gap-4 text-[11px] text-slate-400">
-            <span>MCP Spec 2025-11-25</span>
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-2 gap-y-1 text-[11px] text-zinc-400">
+            <span>Evidence-first inventory</span>
             <span>•</span>
-            <span>OpenStreetMap Geodata</span>
+            <span>OpenStreetMap</span>
             <span>•</span>
-            <span>Evidence-First Inventory Trust</span>
+            <span>MCP Streamable HTTP</span>
           </div>
         </div>
       </footer>
     </div>
   );
 }
-

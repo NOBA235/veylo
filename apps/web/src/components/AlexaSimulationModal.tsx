@@ -2,7 +2,9 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { AssistantAvatar, type AssistantMode } from "@/components/AssistantAvatar";
-import { Mic, Volume2, Square, X, Send, Sparkles, Radio, MapPin, ShieldCheck } from "lucide-react";
+import { Mic, Volume2, Square, X, Send, MapPin, Sparkles } from "lucide-react";
+import { EvidenceBadge } from "./EvidenceBadge";
+import type { InventoryStatus } from "@veylo/types";
 
 interface SpeechRecognitionEventResult {
   0: { transcript: string };
@@ -44,32 +46,6 @@ interface AlexaSimulationModalProps {
   onAskAlexa?: (promptText: string) => void;
 }
 
-const statusFor = (status?: string) => {
-  switch (status) {
-    case "CONFIRMED":
-      return "Stock confirmed";
-    case "LIKELY":
-      return "Online listing found · shelf stock unconfirmed";
-    case "WEB_FOUND":
-      return "Found online · local stock unconfirmed";
-    default:
-      return "Stock not verified";
-  }
-};
-
-const statusStyleFor = (status?: string) => {
-  switch (status) {
-    case "CONFIRMED":
-      return "bg-emerald-100 text-emerald-900 border-emerald-300";
-    case "LIKELY":
-      return "bg-amber-100 text-amber-900 border-amber-300";
-    case "WEB_FOUND":
-      return "bg-blue-100 text-blue-900 border-blue-300";
-    default:
-      return "bg-slate-200 text-slate-700 border-slate-300";
-  }
-};
-
 const VOICE_SUGGESTIONS = [
   "I need that little thing that lets me connect my laptop to a TV.",
   "What is the white tape plumbers wrap around pipe threads?",
@@ -106,11 +82,16 @@ export function AlexaSimulationModal({
         : "idle";
 
   const speakText = (textToSpeak: string) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window) || !textToSpeak) return;
+    if (
+      typeof window === "undefined" ||
+      !("speechSynthesis" in window) ||
+      !textToSpeak
+    )
+      return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.rate = 1.02;
-    utterance.pitch = 1.02;
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
@@ -136,7 +117,7 @@ export function AlexaSimulationModal({
     setIsRecording(false);
   };
 
-  // Auto-speak new live agent answers when the modal is open
+  // Auto-speak new live agent answers when modal is open
   useEffect(() => {
     if (!isOpen || isLoading || !answer) return;
     if (lastSpokenAnswerRef.current !== answer) {
@@ -180,13 +161,17 @@ export function AlexaSimulationModal({
     }
 
     stopSpeech();
-    const win = typeof window !== "undefined" ? (window as unknown as Record<string, unknown>) : {};
-    const SpeechRecognitionCtor = (win.SpeechRecognition || win.webkitSpeechRecognition) as
+    const win =
+      typeof window !== "undefined"
+        ? (window as unknown as Record<string, unknown>)
+        : {};
+    const SpeechRecognitionCtor = (win.SpeechRecognition ||
+      win.webkitSpeechRecognition) as
       | (new () => BrowserSpeechRecognition)
       | undefined;
 
     if (!SpeechRecognitionCtor) {
-      alert("Your browser does not support Web Speech API microphone recognition. Please type your request below or use Chrome/Edge.");
+      alert("Microphone voice recognition is not supported in this browser.");
       return;
     }
 
@@ -231,41 +216,43 @@ export function AlexaSimulationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6 animate-in fade-in duration-150">
-      <section
-        aria-labelledby="voice-preview-title"
-        aria-modal="true"
-        role="dialog"
-        className="my-auto flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-[#f8fafc] text-slate-900 shadow-2xl"
-      >
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-zinc-950/60 p-3 backdrop-blur-xs sm:p-6 animate-in fade-in duration-150"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="alexa-preview-title"
+    >
+      <section className="my-auto flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl">
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-7">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-cyan-700">
-                <Radio className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
-                Alexa+ Live Voice & Multimodal Interface
-              </span>
-              <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-slate-100 text-slate-700 rounded-full border border-slate-200">
-                Echo Show 10 Canvas
-              </span>
+        <header className="flex items-center justify-between border-b border-zinc-200 px-5 py-3.5 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-100 text-zinc-700">
+              <Sparkles className="h-4 w-4" />
             </div>
-            <h2 id="voice-preview-title" className="mt-0.5 text-base sm:text-lg font-semibold tracking-tight text-slate-900">
-              Speak or ask anything — connected live to Veylo MCP
-            </h2>
+            <div>
+              <h2
+                id="alexa-preview-title"
+                className="text-sm font-semibold tracking-tight text-zinc-900"
+              >
+                Alexa+ Multimodal Simulation
+              </h2>
+              <p className="text-[11px] text-zinc-500">
+                Echo Show canvas powered by live Veylo MCP tools
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Close Alexa+ interface"
-            className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Close Alexa preview"
+            className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </header>
 
-        <div className="overflow-y-auto p-5 sm:p-7 space-y-5">
-          {/* Live Voice / Text Input Bar */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-xs">
+        <div className="overflow-y-auto p-4 sm:p-6 space-y-4">
+          {/* Voice & Text Input Composer */}
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-3">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -277,46 +264,48 @@ export function AlexaSimulationModal({
                 type="button"
                 onClick={toggleVoiceRecording}
                 disabled={isLoading}
-                className={`flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-xs sm:text-sm font-semibold transition-all ${
+                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all ${
                   isRecording
-                    ? "bg-rose-600 text-white animate-pulse shadow-md"
-                    : "bg-cyan-700 text-white hover:bg-cyan-800 shadow-xs"
-                } disabled:opacity-50`}
-                title={isRecording ? "Stop and send voice request" : "Click and speak into your microphone"}
+                    ? "bg-rose-600 text-white animate-quiet-pulse"
+                    : "bg-zinc-900 text-white hover:bg-zinc-800"
+                } disabled:opacity-40`}
+                title={isRecording ? "Stop voice recording" : "Speak to Alexa"}
               >
-                <Mic className="h-4 w-4" />
-                <span>{isRecording ? "Listening... (Click to Send)" : "Speak to Alexa"}</span>
+                <Mic className="h-3.5 w-3.5" />
+                <span>{isRecording ? "Listening..." : "Speak"}</span>
               </button>
 
               <input
                 type="text"
                 value={voiceInput}
                 onChange={(e) => setVoiceInput(e.target.value)}
-                placeholder={isRecording ? "Speak now..." : "Or type what you say to Alexa..."}
+                placeholder={
+                  isRecording ? "Listening to voice..." : "Or type what you would say..."
+                }
                 disabled={isLoading}
-                className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-cyan-600 focus:bg-white focus:outline-none"
+                className="min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-800 focus:outline-none"
               />
 
               <button
                 type="submit"
                 disabled={isLoading || !voiceInput.trim()}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white transition hover:bg-slate-800 disabled:opacity-40"
-                title="Send to Alexa+ Agent"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700 hover:bg-zinc-200 disabled:opacity-40 transition-colors"
+                title="Send query"
               >
-                <Send className="h-4 w-4" />
+                <Send className="h-3.5 w-3.5" />
               </button>
             </form>
 
-            {/* Quick Voice Utterances */}
-            <div className="mt-3 flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100">
-              <span className="text-[11px] font-medium text-slate-400 mr-1">Try saying:</span>
+            {/* Quick Utterances */}
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-zinc-200/60 pt-2 text-xs">
+              <span className="text-[11px] text-zinc-400">Suggestions:</span>
               {VOICE_SUGGESTIONS.map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
                   disabled={isLoading}
                   onClick={() => handleTriggerQuery(suggestion)}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-900 disabled:opacity-50"
+                  className="rounded border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 transition-colors disabled:opacity-50"
                 >
                   &ldquo;{suggestion}&rdquo;
                 </button>
@@ -324,127 +313,124 @@ export function AlexaSimulationModal({
             </div>
           </div>
 
-          {/* Echo Show 10 Multimodal Display Screen */}
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            {/* Echo Show Top Status Bar */}
-            <div className="flex items-center justify-between gap-4 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 px-5 py-5 sm:px-7">
-              <AssistantAvatar mode={effectiveMode} />
-              <div className="flex flex-col items-end gap-1.5">
-                <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium text-cyan-200 flex items-center gap-1.5">
-                  <Sparkles className="w-3 h-3" />
+          {/* Multimodal Device Screen Canvas */}
+          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xs">
+            {/* Canvas Status Bar */}
+            <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50 px-4 py-2.5">
+              <div className="flex items-center gap-2">
+                <AssistantAvatar mode={effectiveMode} nav animationOnly />
+                <span className="text-xs font-medium text-zinc-800">
                   {isLoading
-                    ? `Running MCP Planner (Step ${traceCount}/8)`
+                    ? `Reasoning with MCP (Step ${traceCount}/8)`
                     : product
-                      ? `Live Result · ${traceCount} MCP steps`
-                      : "Ready for Voice Input"}
-                </span>
-                <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  {currentLocation}
+                      ? "Result verified"
+                      : "Ready"}
                 </span>
               </div>
+              <span className="flex items-center gap-1 text-[11px] text-zinc-400">
+                <MapPin className="h-3 w-3" />
+                <span>{currentLocation}</span>
+              </span>
             </div>
 
-            {/* Echo Show Main Canvas Body */}
-            <div className="space-y-4 p-5 sm:p-7">
+            {/* Canvas Body */}
+            <div className="p-4 sm:p-5 space-y-3.5">
               {isLoading ? (
-                <div className="py-10 text-center flex flex-col items-center justify-center gap-3">
-                  <div className="w-8 h-8 border-3 border-cyan-200 border-t-cyan-700 rounded-full animate-spin" />
-                  <p className="text-sm font-semibold text-slate-800">
-                    Alexa+ is invoking Veylo MCP tools in real time...
+                <div className="py-10 text-center flex flex-col items-center justify-center gap-2.5">
+                  <div className="h-6 w-6 rounded-full border-2 border-zinc-200 border-t-zinc-800 animate-quiet-spin" />
+                  <p className="text-xs font-medium text-zinc-700">
+                    Querying Veylo MCP tools in real-time...
                   </p>
-                  <p className="text-xs text-slate-500 font-mono">
-                    Step {traceCount}/8 · Checking product catalogue, user hardware memory & local stores
+                  <p className="text-[11px] text-zinc-400">
+                    Evaluating product match & store inventory
                   </p>
                 </div>
               ) : product || answer ? (
                 <>
-                  {/* Spoken User Utterance */}
+                  {/* User Utterance */}
                   {userQuery && (
-                    <div className="ml-auto max-w-[90%] rounded-2xl rounded-tr-sm bg-slate-100 px-4 py-3 text-sm leading-relaxed text-slate-700">
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">
-                        You said:
+                    <div className="ml-auto max-w-[85%] rounded-lg bg-zinc-100 px-3.5 py-2.5 text-xs text-zinc-800">
+                      <span className="block text-[10px] uppercase font-semibold text-zinc-400 mb-0.5">
+                        User voice
                       </span>
                       &ldquo;{userQuery}&rdquo;
                     </div>
                   )}
 
-                  {/* Spoken Alexa+ Response */}
+                  {/* Alexa Spoken Answer */}
                   {answer && (
-                    <div className="max-w-[95%] rounded-2xl rounded-tl-sm border border-cyan-200 bg-cyan-50/70 px-4 py-3.5 text-sm leading-relaxed text-slate-900 shadow-2xs">
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-cyan-800 mb-1">
-                        Alexa+ Response:
+                    <div className="max-w-[95%] rounded-lg border border-zinc-200 bg-zinc-50 p-3.5 text-xs text-zinc-900">
+                      <span className="block text-[10px] uppercase font-semibold text-zinc-500 mb-1">
+                        Alexa response
                       </span>
-                      {answer}
+                      <p className="leading-relaxed">{answer}</p>
                     </div>
                   )}
 
-                  {/* Echo Show Visual Product & Store Card */}
+                  {/* Visual Product Card */}
                   {product && (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white p-3.5">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                            Identified Product
-                          </p>
+                          <span className="text-[11px] uppercase font-semibold text-zinc-400">
+                            Identified
+                          </span>
                           {confidence !== undefined && (
-                            <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-mono font-bold text-emerald-800">
+                            <span className="text-[11px] font-mono text-zinc-600">
                               {Math.round(confidence * 100)}% match
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 text-base font-bold text-slate-900">{product}</p>
-                        <p className="mt-0.5 text-xs text-slate-600">
-                          Category: <span className="font-medium">{category || "General"}</span>
-                          {storeName ? ` · Nearest Store: ${storeName}` : ""}
+                        <h4 className="font-semibold text-zinc-950 text-sm mt-0.5">
+                          {product}
+                        </h4>
+                        <p className="text-xs text-zinc-500 mt-0.5">
+                          {category || "General"}
+                          {storeName ? ` · Nearest: ${storeName}` : ""}
                         </p>
                       </div>
-                      <span
-                        className={`self-start sm:self-center shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${statusStyleFor(
-                          evidenceStatus
-                        )}`}
-                      >
-                        {statusFor(evidenceStatus)}
-                      </span>
+                      <EvidenceBadge
+                        status={(evidenceStatus as InventoryStatus) || "UNKNOWN"}
+                        className="self-start sm:self-auto shrink-0"
+                      />
                     </div>
                   )}
 
-                  {/* Audio Control Bar */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-2">
-                      {answer && (
-                        <button
-                          type="button"
-                          onClick={() => (isSpeaking ? stopSpeech() : speakText(answer))}
-                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs sm:text-sm font-medium text-white transition hover:bg-slate-800"
-                        >
-                          {isSpeaking ? (
-                            <>
-                              <Square className="h-3.5 w-3.5 fill-current" />
-                              Stop Voice
-                            </>
-                          ) : (
-                            <>
-                              <Volume2 className="h-4 w-4" />
-                              Hear Alexa Response
-                            </>
-                          )}
-                        </button>
-                      )}
+                  {/* Audio Control */}
+                  {answer && (
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          isSpeaking ? stopSpeech() : speakText(answer)
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+                      >
+                        {isSpeaking ? (
+                          <>
+                            <Square className="h-3 w-3 fill-current text-zinc-700" />
+                            <span>Stop voice</span>
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="h-3.5 w-3.5 text-zinc-600" />
+                            <span>Replay audio</span>
+                          </>
+                        )}
+                      </button>
+                      <span className="text-[11px] text-zinc-400">
+                        Web Speech API
+                      </span>
                     </div>
-                    <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                      Powered by live MCP tools & Web Speech API
-                    </span>
-                  </div>
+                  )}
                 </>
               ) : (
-                <div className="py-8 text-center space-y-2">
-                  <p className="text-sm font-semibold text-slate-800">
-                    No active conversation yet
+                <div className="py-8 text-center text-xs text-zinc-400">
+                  <p className="font-medium text-zinc-600 mb-1">
+                    Ready for voice inquiry
                   </p>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    Click <strong>&ldquo;Speak to Alexa&rdquo;</strong> above to use your microphone, type a question, or tap one of the voice suggestions to watch Alexa+ resolve your request live over MCP.
+                  <p className="max-w-xs mx-auto">
+                    Speak into your microphone or pick a suggested query to test the Alexa+ physical shopping flow.
                   </p>
                 </div>
               )}
