@@ -9,9 +9,7 @@ const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 const DEFAULT_MODEL_ID = "eleven_turbo_v2_5";
 
 function getEnvVar(key: string): string | undefined {
-  if (process.env[key]) return process.env[key];
-
-  // Fallback: dynamically read from root .env or apps/web/.env.local if server was not restarted
+  // Always check disk first in dev so modifying .env updates instantly without restart
   const candidatePaths = [
     path.resolve(process.cwd(), ".env.local"),
     path.resolve(process.cwd(), ".env"),
@@ -25,10 +23,12 @@ function getEnvVar(key: string): string | undefined {
         const content = fs.readFileSync(envPath, "utf-8");
         const regex = new RegExp(`^${key}=(.*)$`, "m");
         const match = content.match(regex);
-        if (match && match[1]) {
+        if (match && match[1] !== undefined) {
           const val = match[1].trim().replace(/^["']|["']$/g, "");
-          process.env[key] = val; // Cache in process.env
-          return val;
+          if (val) {
+            process.env[key] = val;
+            return val;
+          }
         }
       }
     } catch {
@@ -36,7 +36,7 @@ function getEnvVar(key: string): string | undefined {
     }
   }
 
-  return undefined;
+  return process.env[key] || undefined;
 }
 
 export async function POST(req: Request) {
