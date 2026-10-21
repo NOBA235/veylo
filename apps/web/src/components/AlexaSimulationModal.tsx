@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { AssistantAvatar, type AssistantMode } from "@/components/AssistantAvatar";
+import { speakAssistantText, stopAssistantSpeech } from "@/lib/speech";
 import { Mic, Volume2, Square, X, Send, MapPin, Sparkles } from "lucide-react";
 import { EvidenceBadge } from "./EvidenceBadge";
 import type { InventoryStatus } from "@veylo/types";
@@ -82,26 +83,16 @@ export function AlexaSimulationModal({
         : "idle";
 
   const speakText = (textToSpeak: string) => {
-    if (
-      typeof window === "undefined" ||
-      !("speechSynthesis" in window) ||
-      !textToSpeak
-    )
-      return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
+    if (!textToSpeak) return;
+    void speakAssistantText(textToSpeak, {
+      onStart: () => setIsSpeaking(true),
+      onEnd: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
   };
 
   const stopSpeech = () => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
+    stopAssistantSpeech();
     setIsSpeaking(false);
   };
 

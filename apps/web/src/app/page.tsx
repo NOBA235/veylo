@@ -15,6 +15,7 @@ import { StoreModal } from "@/components/StoreModal";
 import { DirectionsModal } from "@/components/DirectionsModal";
 import { AlexaSimulationModal } from "@/components/AlexaSimulationModal";
 import { AssistantAvatar, type AssistantMode } from "@/components/AssistantAvatar";
+import { speakAssistantText, stopAssistantSpeech } from "@/lib/speech";
 import { Square, Volume2, PackageCheck, RotateCcw } from "lucide-react";
 
 export default function Home() {
@@ -154,7 +155,7 @@ export default function Home() {
     urgency?: "today" | "this_week" | "online" | "unknown";
     compatibility?: string;
   }) => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    stopAssistantSpeech();
     setIsSpeaking(false);
     setIsListening(false);
     setIsLoading(true);
@@ -190,26 +191,24 @@ export default function Home() {
   };
 
   const handleSpeakAnswer = () => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window) || !agentResult?.answer) return;
+    if (!agentResult?.answer) return;
     if (isSpeaking) {
-      window.speechSynthesis.cancel();
+      stopAssistantSpeech();
       setIsSpeaking(false);
       return;
     }
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(agentResult.answer);
-    utterance.rate = 1;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
+    void speakAssistantText(agentResult.answer, {
+      onStart: () => setIsSpeaking(true),
+      onEnd: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
   };
 
   // Answer a clarification question
   const handleAnswerClarification = async (answer: string) => {
     if (!agentState) return;
-    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    stopAssistantSpeech();
     setIsSpeaking(false);
     setIsLoading(true);
     setIsStreaming(true);
@@ -240,9 +239,7 @@ export default function Home() {
 
   // Reset search back to fresh state
   const handleResetSearch = () => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
+    stopAssistantSpeech();
     setIsSpeaking(false);
     setIsListening(false);
     setIsLoading(false);
