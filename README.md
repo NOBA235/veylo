@@ -8,6 +8,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15.5-black.svg?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![MCP Spec](https://img.shields.io/badge/MCP%20Spec-2025--11--25-emerald.svg?style=flat-square)](https://modelcontextprotocol.io/)
 [![Amazon Bedrock](https://img.shields.io/badge/Amazon%20Bedrock-Claude%203.5-purple.svg?style=flat-square&logo=amazon-aws)](https://aws.amazon.com/bedrock/)
+[![ElevenLabs](https://img.shields.io/badge/Voice%20Synthesis-ElevenLabs%20Turbo-black.svg?style=flat-square)](https://elevenlabs.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 <p align="center">
@@ -60,6 +61,12 @@ Veylo exposes **11 composable tools** via stateless Streamable HTTP on `http://1
 ### 5. Multi-Engine Intelligence Layer
 - **Amazon Bedrock:** Production-grade semantic reasoning using Anthropic Claude 3.5 Sonnet and Amazon Nova via the modern unified `ConverseCommand` API.
 - **Resilient Fallback:** Automatically switches to Google Gemini, OpenAI, or deterministic offline rules if credentials are unset or rate-limited. Zero broken sessions.
+
+### 6. Alexa+ Luminary Avatar & Multimodal Voice Synthesis
+- **Calm Notion/Linear Aesthetic:** Thoughtfully redesigned UI emphasizing typography, crisp hierarchy, restrained neutral palettes, and truthful status indicators.
+- **Dynamic Luminary Avatar:** Real-time multi-state status indicator with responsive orbital light physics (`idle`, `listening`, `thinking`, `speaking`).
+- **High-Fidelity Neural Audio:** Ultra-low latency voice streaming via **ElevenLabs** (`eleven_turbo_v2_5` with "Rachel" Alexa-style voice) paired with smart automated fallback to system natural neural voices (`Microsoft Jenny Natural`, `Aria`, `Google US English`).
+- **Echo Show Simulation:** Dedicated multimodal canvas providing simultaneous visual summary cards and conversational audio playback.
 
 ---
 
