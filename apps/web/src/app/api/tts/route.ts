@@ -1,14 +1,47 @@
 import { NextResponse } from "next/server";
+import fs from "node:fs";
+import path from "node:path";
 
 export const dynamic = "force-dynamic";
 
-// Default to "Rachel" (21m00Tcm4TlvDq8ikWAM) - calm, natural, and remarkably close to Alexa+
+// Default to "Rachel" if voiceId is not specified
 const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 const DEFAULT_MODEL_ID = "eleven_turbo_v2_5";
 
+function getEnvVar(key: string): string | undefined {
+  if (process.env[key]) return process.env[key];
+
+  // Fallback: dynamically read from root .env or apps/web/.env.local if server was not restarted
+  const candidatePaths = [
+    path.resolve(process.cwd(), ".env.local"),
+    path.resolve(process.cwd(), ".env"),
+    path.resolve(process.cwd(), "../../.env"),
+    path.resolve(process.cwd(), "../.env"),
+  ];
+
+  for (const envPath of candidatePaths) {
+    try {
+      if (fs.existsSync(envPath)) {
+        const content = fs.readFileSync(envPath, "utf-8");
+        const regex = new RegExp(`^${key}=(.*)$`, "m");
+        const match = content.match(regex);
+        if (match && match[1]) {
+          const val = match[1].trim().replace(/^["']|["']$/g, "");
+          process.env[key] = val; // Cache in process.env
+          return val;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return undefined;
+}
+
 export async function POST(req: Request) {
   try {
-    const apiKey = process.env.ELEVENLABS_API_KEY;
+    const apiKey = getEnvVar("ELEVENLABS_API_KEY");
     if (!apiKey) {
       return NextResponse.json(
         {
@@ -21,8 +54,13 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => ({}));
     const text = typeof body?.text === "string" ? body.text.trim() : "";
-    const voiceId = body?.voiceId || process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID;
-    const modelId = process.env.ELEVENLABS_MODEL_ID || DEFAULT_MODEL_ID;
+    const voiceId =
+      body?.voiceId ||
+      getEnvVar("ELEVENLABS_VOICE_ID") ||
+      DEFAULT_VOICE_ID;
+    const modelId =
+      getEnvVar("ELEVENLABS_MODEL_ID") ||
+      DEFAULT_MODEL_ID;
 
     if (!text) {
       return NextResponse.json(
