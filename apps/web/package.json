@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-polly": "^3.1155.0",
     "@modelcontextprotocol/sdk": "^1.23.0",
     "@veylo/agent": "workspace:*",
     "@veylo/ai": "workspace:*",

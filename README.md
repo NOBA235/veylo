@@ -8,7 +8,8 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15.5-black.svg?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![MCP Spec](https://img.shields.io/badge/MCP%20Spec-2025--11--25-emerald.svg?style=flat-square)](https://modelcontextprotocol.io/)
 [![Amazon Bedrock](https://img.shields.io/badge/Amazon%20Bedrock-Claude%203.5-purple.svg?style=flat-square&logo=amazon-aws)](https://aws.amazon.com/bedrock/)
-[![ElevenLabs](https://img.shields.io/badge/Voice%20Synthesis-ElevenLabs%20Turbo-black.svg?style=flat-square)](https://elevenlabs.io/)
+[![Amazon Polly](https://img.shields.io/badge/Amazon%20Polly-Neural%20TTS-orange.svg?style=flat-square&logo=amazon-aws)](https://aws.amazon.com/polly/)
+[![Amazon RDS](https://img.shields.io/badge/Amazon%20RDS-PostgreSQL-blue.svg?style=flat-square&logo=amazon-aws)](https://aws.amazon.com/rds/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 <p align="center">
@@ -58,14 +59,14 @@ Veylo's schemas reject any claim of `CONFIRMED` stock without attached physical 
 ### 4. Self-Hosted MCP Server (Spec 2025-11-25)
 Veylo exposes **11 composable tools** via stateless Streamable HTTP on `http://127.0.0.1:8787/mcp`, fully compliant with the latest Model Context Protocol specification. Both the Next.js web application and external voice agents (Alexa+) call the exact same MCP tools.
 
-### 5. Multi-Engine Intelligence Layer
+### 5. Native AWS Cloud Intelligence & Zero-Broken-Demo Guarantee
 - **Amazon Bedrock:** Production-grade semantic reasoning using Anthropic Claude 3.5 Sonnet and Amazon Nova via the modern unified `ConverseCommand` API.
-- **Resilient Fallback:** Automatically switches to Google Gemini, OpenAI, or deterministic offline rules if credentials are unset or rate-limited. Zero broken sessions.
+- **Resilient Fallback:** Automatically switches to deterministic offline rules if AWS credentials are unset or rate-limited. Zero broken sessions during evaluation.
 
-### 6. Alexa+ Luminary Avatar & Multimodal Voice Synthesis
-- **Calm Notion/Linear Aesthetic:** Thoughtfully redesigned UI emphasizing typography, crisp hierarchy, restrained neutral palettes, and truthful status indicators.
+### 6. Alexa+ Luminary Avatar & Amazon Polly Neural Voice Synthesis
+- **Calm Notion/Linear Aesthetic:** Thoughtfully designed UI emphasizing typography, crisp hierarchy, restrained neutral palettes, and truthful status indicators.
 - **Dynamic Luminary Avatar:** Real-time multi-state status indicator with responsive orbital light physics (`idle`, `listening`, `thinking`, `speaking`).
-- **High-Fidelity Neural Audio:** Ultra-low latency voice streaming via **ElevenLabs** (`eleven_turbo_v2_5` with "Rachel" Alexa-style voice) paired with smart automated fallback to system natural neural voices (`Microsoft Jenny Natural`, `Aria`, `Google US English`).
+- **High-Fidelity Neural Audio:** Ultra-low latency voice streaming via **Amazon Polly** (`@aws-sdk/client-polly` with "Joanna" Alexa-style neural voice) paired with smart automated fallback to system natural neural voices (`Microsoft Jenny Natural`, `Aria`, `Google US English`).
 - **Echo Show Simulation:** Dedicated multimodal canvas providing simultaneous visual summary cards and conversational audio playback.
 
 ---
@@ -77,10 +78,10 @@ flowchart LR
   A["Alexa+ Voice Agent (or Echo Show Simulator)"] -->|"MCP (Streamable HTTP)"| M
   W["Web Application (Next.js 15)"] -->|"Typed MCP Client"| M
   M["MCP Server (/mcp :8787)"] --> C["@veylo/core"]
-  C --> AI["@veylo/ai (Multi-Engine Adapter)"]
+  C --> AI["@veylo/ai (Amazon Bedrock & Rules Engine)"]
   C --> LD["@veylo/local-discovery"]
-  C --> DB[("PostgreSQL / Supabase")]
-  AI --> P["Bedrock | Gemini | OpenAI | Rules"]
+  C --> DB[("Amazon RDS / Aurora PostgreSQL")]
+  AI --> P["Amazon Bedrock | Deterministic Rules"]
   LD --> O["OpenStreetMap / Overpass / Nominatim"]
 ```
 
@@ -93,9 +94,9 @@ veylo/
 │   └── web/              # Next.js 15 App Router frontend (Tailwind CSS, Echo Show simulator)
 ├── packages/
 │   ├── agent/            # Bounded agent loop (max 8 steps) with progressive trace streaming
-│   ├── ai/               # Unified AI engine (Amazon Bedrock, Gemini, OpenAI, rules)
+│   ├── ai/               # AI engine (Amazon Bedrock Converse API, deterministic rules)
 │   ├── core/             # Domain services, catalog index, and evidence verification engine
-│   ├── db/               # PostgreSQL & Supabase persistence with Drizzle ORM migrations
+│   ├── db/               # PostgreSQL & Amazon RDS persistence with Drizzle ORM migrations
 │   ├── local-discovery/  # Real-world geocoding & OpenStreetMap Overpass spatial queries
 │   ├── mcp-client/       # Typed MCP client implementation
 │   └── types/            # Zod schemas & tool contracts (single source of truth)
@@ -126,7 +127,7 @@ cp .env.example .env
 # Bootstrap database (applies migrations and seeds catalog)
 pnpm bootstrap
 ```
-*(If running without Docker, simply supply your PostgreSQL or Supabase connection string as `DATABASE_URL` in `.env` and run `pnpm db:migrate && pnpm db:seed`.)*
+*(If running without Docker, simply supply your PostgreSQL or Amazon RDS connection string as `DATABASE_URL` in `.env` and run `pnpm db:migrate && pnpm db:seed`.)*
 
 ### 3. Start Development Servers
 ```bash
@@ -146,7 +147,7 @@ pnpm dev
 Veylo includes strict automated test suites across all packages:
 
 ```bash
-# Run all 134 automated unit & integration tests
+# Run all automated unit & integration tests
 pnpm test
 
 # Run strict TypeScript checks across the monorepo
@@ -164,10 +165,10 @@ npx @modelcontextprotocol/inspector http://127.0.0.1:8787/mcp
 ## Documentation
 
 - **[System Architecture](docs/architecture.md):** Deep dive into the bounded agent loop, ports, and monorepo design.
+- **[AWS Cloud Integration](docs/aws-builder-integration.md):** Amazon Bedrock, Amazon Polly Neural Voice, and Amazon RDS architecture.
 - **[MCP Tools Specification](docs/mcp-tools.md):** Schema contracts and execution documentation for all 11 tools.
 - **[Evidence Trust Model](docs/evidence-model.md):** Verification hierarchy, confidence scoring, and anti-hallucination rules.
 - **[Alexa+ Integration Guide](docs/alexa-plus-integration.md):** Ambient voice dialogue design, system prompts, and Echo Show 10 multimodal canvas.
-- **[Amazon Bedrock Integration](docs/aws-builder-integration.md):** Bedrock `ConverseCommand` integration, cross-region profiles, and structured JSON extraction.
 - **[Evaluation & Walkthrough Guide](docs/evaluation-guide.md):** Step-by-step evaluator scenarios for testing real-time trace and inventory memory.
 - **[Product Roadmap](docs/roadmap.md):** Forward-looking engineering vision including multimodal camera vision and retail POS webhooks.
 

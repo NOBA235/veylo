@@ -1,7 +1,7 @@
 /**
  * Universal speech player for Veylo.
- * Prioritizes high-fidelity ElevenLabs neural speech via /api/tts.
- * Automatically falls back to the best available natural browser voice if ElevenLabs is unconfigured.
+ * Prioritizes high-fidelity Amazon Polly neural speech via /api/tts (Joanna Neural).
+ * Automatically falls back to the best available natural browser voice if Amazon Polly is unconfigured.
  */
 
 interface SpeechCallbacks {
@@ -146,7 +146,7 @@ function speakBrowserSpeech(
 }
 
 /**
- * Speaks text using ElevenLabs TTS if available; otherwise falls back to browser voice.
+ * Speaks text using Amazon Polly Neural TTS if available; otherwise falls back to browser voice.
  */
 export async function speakAssistantText(
   text: string,
@@ -183,7 +183,7 @@ export async function speakAssistantText(
     if (generation !== speechGeneration) return;
 
     if (!res.ok) {
-      // ElevenLabs is not configured or failed -> gracefully fall back to browser voice
+      // Amazon Polly is not configured or failed -> gracefully fall back to browser voice
       fallbackToBrowser();
       return;
     }

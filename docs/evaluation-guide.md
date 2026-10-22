@@ -21,7 +21,7 @@ This guide walks evaluators, partners, and developers through testing Veylo's en
 3. **Verify Health:**
    Visit `http://localhost:3000` and observe the header telemetry:
    - **MCP Status:** `MCP 2025-11-25 • Streamable HTTP`
-   - **AI Provider:** `BEDROCK`, `GEMINI`, `OPENAI`, or deterministic offline `RULES`
+   - **AI Provider:** `BEDROCK` (Amazon Bedrock Converse API) or deterministic offline `RULES`
    - **Trust Policy:** `Zero Hallucinated Stock`
 
 ---

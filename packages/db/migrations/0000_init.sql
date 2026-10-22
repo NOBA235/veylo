@@ -1,6 +1,6 @@
 -- 0000_init.sql: Veylo product knowledge schema (Phase 1).
 -- This file is the DDL source of truth. src/schema.ts mirrors the columns for typed queries.
--- Target: PostgreSQL 13+ (gen_random_uuid is built in) and Supabase.
+-- Target: Amazon RDS / Aurora PostgreSQL Serverless v2 (or local PostgreSQL 13+).
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 

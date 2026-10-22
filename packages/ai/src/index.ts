@@ -1,18 +1,14 @@
 import { AiProviderName } from "@veylo/types";
 import type { AiAssists } from "./types";
 import { BedrockIdentifyAssist, BedrockCompareAssist } from "./providers/bedrock";
-import { GeminiIdentifyAssist, GeminiCompareAssist } from "./providers/gemini";
-import { OpenAiIdentifyAssist, OpenAiCompareAssist } from "./providers/openai";
 import { createRulesAssists } from "./providers/rules";
 
 export * from "./types";
 export * from "./util";
 export * from "./providers/bedrock";
-export * from "./providers/gemini";
-export * from "./providers/openai";
 export * from "./providers/rules";
 
-/** Resolve AI_PROVIDER; unknown or missing values mean `rules`, which needs no keys. */
+/** Resolve AI_PROVIDER; unknown or missing values mean `rules`, which needs no AWS account. */
 export function resolveProviderName(
   raw: string | undefined = process.env.AI_PROVIDER
 ): AiProviderName {
@@ -29,92 +25,24 @@ export interface CreateAiAssistsOptions {
 }
 
 /**
- * Creates the configured AI assists with automatic fallback to rules.
- * Never throws if credentials are missing or invalid: always falls back safely.
+ * Creates the configured AI assists.
+ *
+ * - `rules`: deterministic catalogue ranking, no network.
+ * - `bedrock`: Amazon Bedrock Converse. If a call fails (no credentials, no model
+ *   access, throttling), the core falls back to rules for that call and labels the
+ *   result `rules (fallback from bedrock: <reason>)`. Nothing is relabelled.
  */
 export function createAiAssists(options: CreateAiAssistsOptions = {}): AiAssists {
   const providerName = resolveProviderName(options.provider ?? process.env.AI_PROVIDER);
   const logger = options.logger ?? console;
 
-  if (providerName === "rules") {
-    return createRulesAssists();
-  }
-
   if (providerName === "bedrock") {
-    try {
-      const identifyAssist = new BedrockIdentifyAssist();
-      const compareAssist = new BedrockCompareAssist();
-      const hasKeys = Boolean(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY);
-
-      if (hasKeys) {
-        logger.info(`Initialized Amazon Bedrock AI provider with model ${identifyAssist.modelId} (live AWS Bedrock runtime)`);
-      } else {
-        logger.info(`Initialized Amazon Bedrock AI provider with model ${identifyAssist.modelId} (AWS Builder Mini Challenge resilient runtime)`);
-      }
-
-      return {
-        provider: "bedrock",
-        identifyAssist,
-        compareAssist,
-      };
-    } catch (err) {
-      logger.warn(
-        `Failed to initialize Amazon Bedrock provider: ${String(err)}. Falling back to rules provider.`
-      );
-      return createRulesAssists();
-    }
-  }
-
-  if (providerName === "gemini") {
-    try {
-      if (!process.env.GEMINI_API_KEY) {
-        logger.warn(
-          "AI_PROVIDER=gemini is requested, but GEMINI_API_KEY is not set. Falling back to rules provider."
-        );
-        return createRulesAssists();
-      }
-
-      const identifyAssist = new GeminiIdentifyAssist();
-      const compareAssist = new GeminiCompareAssist();
-      logger.info(`Initialized Google Gemini AI provider with model ${identifyAssist.modelId}`);
-
-      return {
-        provider: "gemini",
-        identifyAssist,
-        compareAssist,
-      };
-    } catch (err) {
-      logger.warn(
-        `Failed to initialize Gemini provider: ${String(err)}. Falling back to rules provider.`
-      );
-      return createRulesAssists();
-    }
-  }
-
-  if (providerName === "openai") {
-    try {
-      if (!process.env.OPENAI_API_KEY) {
-        logger.warn(
-          "AI_PROVIDER=openai is requested, but OPENAI_API_KEY is not set. Falling back to rules provider."
-        );
-        return createRulesAssists();
-      }
-
-      const identifyAssist = new OpenAiIdentifyAssist();
-      const compareAssist = new OpenAiCompareAssist();
-      logger.info(`Initialized OpenAI provider with model ${identifyAssist.modelId}`);
-
-      return {
-        provider: "openai",
-        identifyAssist,
-        compareAssist,
-      };
-    } catch (err) {
-      logger.warn(
-        `Failed to initialize OpenAI provider: ${String(err)}. Falling back to rules provider.`
-      );
-      return createRulesAssists();
-    }
+    const identifyAssist = new BedrockIdentifyAssist();
+    const compareAssist = new BedrockCompareAssist();
+    logger.info(
+      `Amazon Bedrock provider enabled (model ${identifyAssist.modelId}, region ${process.env.AWS_REGION ?? "us-east-1"}). Credentials resolve via the AWS SDK default chain.`
+    );
+    return { provider: "bedrock", identifyAssist, compareAssist };
   }
 
   return createRulesAssists();

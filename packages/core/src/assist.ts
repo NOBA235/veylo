@@ -1,4 +1,4 @@
-// Ports for AI providers. Phase 5/6 implements these for Bedrock, Gemini, OpenAI.
+// Ports for AI providers (Amazon Bedrock Converse API, deterministic offline rules).
 // The core never trusts an assist blindly: results are validated and guard-railed (see identify.ts, compare.ts).
 import type { AiProviderName, InventoryStatus } from "@veylo/types";
 

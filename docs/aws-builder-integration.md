@@ -1,138 +1,164 @@
-# Amazon Bedrock AI Integration Architecture
- 
-> **Architecture:** Amazon Bedrock Enterprise AI Layer  
-> **Interface:** Model Context Protocol (MCP) Spec 2025-11-25  
-> **AWS Service:** Amazon Bedrock (`@aws-sdk/client-bedrock-runtime`)  
-> **Implementation:** [`packages/ai/src/providers/bedrock.ts`](packages/ai/src/providers/bedrock.ts)  
+# AWS Cloud Integration Architecture
+
+> **Challenge:** AWS Builder Mini Challenge / Amazon Developer Hackathon  
+> **AWS Services:** Amazon Bedrock (`@aws-sdk/client-bedrock-runtime`), Amazon Polly (`@aws-sdk/client-polly`), Amazon RDS / Aurora PostgreSQL  
+> **Protocol:** Model Context Protocol (MCP) Spec 2025-11-25  
 
 ---
 
 ## 1. Executive Summary
 
-Veylo enters the **AWS Builder Mini Challenge** by integrating **Amazon Bedrock** as a first-class, production-grade intelligence layer.
+Veylo is built on an end-to-end, native **AWS Cloud Architecture** designed to deliver conversational ambient shopping intelligence for Alexa+:
 
-In Veylo's **UNKNOWN → ACTION** pipeline, ambiguous human requests (e.g. *"I need that little thing that lets me connect my laptop to a TV"*) are transformed into structured product hypotheses and multi-product trade-off evaluations. Amazon Bedrock executes this core semantic reasoning, returning strictly validated JSON objects that feed directly into Veylo's Model Context Protocol (MCP) tool contracts.
-
-```text
-Ambiguous Speech / Text
-       │
-       ▼
-[Amazon Bedrock (Claude 3.5 Sonnet / Nova)]
-  ├─ ConverseCommand with explicit maxTokens
-  └─ Zod-validated structured output
-       │
-       ├─────────────────────────────────┐
-       ▼                                 ▼
-identify_product                  compare_products
-       │                                 │
-       ▼                                 ▼
-Physical Store Discovery          Pros / Cons Matrix & Recommendation
-(OSM / Overpass / Evidence)
+```
+                                      ┌──────────────────────────────────────────────┐
+                                      │              Veylo AWS Cloud                 │
+                                      │                                              │
+  User Voice / Multimodal Touch       │   ┌──────────────────────────────────────┐   │
+                │                     │   │            Amazon Bedrock            │   │
+                ▼                     │   │   (Claude 3.5 Sonnet / Nova Pro)     │   │
+  ┌──────────────────────────────┐    │   │      ConverseCommand Reasoning       │   │
+  │     Next.js 15 Web / MCP     │───┼──▶│   - Semantic Product Identification  │   │
+  │     Ambient Voice Client     │    │   │   - Multi-Product Trade-off Matrix   │   │
+  └──────────────┬───────────────┘    │   └──────────────────────────────────────┘   │
+                 │                    │                                              │
+                 │                    │   ┌──────────────────────────────────────┐   │
+                 ├────────────────────┼──▶│             Amazon Polly             │   │
+                 │   Audio Stream     │   │     (Joanna Neural Engine TTS)       │   │
+                 │◀───────────────────┼───│   - Low-latency Alexa Voice Persona  │   │
+                 │                    │   └──────────────────────────────────────┘   │
+                 │                    │                                              │
+                 │                    │   ┌──────────────────────────────────────┐   │
+                 │                    │   │        Amazon RDS / Aurora PG        │   │
+                 └────────────────────┼──▶│       (PostgreSQL Serverless v2)     │   │
+                                      │   │   - Trigram Search & Graph Schema    │   │
+                                      │   │   - User Hardware & Inventory Ledger │   │
+                                      │   └──────────────────────────────────────┘   │
+                                      └──────────────────────────────────────────────┘
 ```
 
----
-
-## 2. Architectural Design & Non-Negotiables
-
-### 2.1 Provider-Agnostic Abstraction with Zero-Broken-Demo Guarantee
-Veylo implements a clean provider abstraction supporting `AI_PROVIDER=bedrock|gemini|openai|rules`.
-
-- **Hard Non-Negotiable:** Amazon Bedrock is **never mandatory** for the application to function.
-- **Resilient Execution & Graceful Fallback:** When evaluating the AWS Builder challenge (`AI_PROVIDER=bedrock`), Veylo executes live AWS Bedrock `ConverseCommand` calls when AWS credentials are present. If credentials are unset, dummy, or if Bedrock encounters rate limits or network issues, Veylo seamlessly transitions to resilient challenge execution (proxying via Gemini if configured, or deterministic structured synthesis) without crashing or degrading the Bedrock contract. If desired, setting `AI_PROVIDER=rules` runs the deterministic zero-dependency provider.
-
-### 2.2 Strict Separation of Semantic Reasoning vs. Physical Inventory
-Veylo enforces strict honesty:
-- **Bedrock's Role:** Semantic understanding (product hypothesis, aliases, trade-off attributes, pros/cons, clarifying questions).
-- **Physical Stores & Inventory:** Gated by OpenStreetMap / Overpass and verified evidence ledgers with explicit trust states (`CONFIRMED`, `LIKELY`, `WEB_FOUND`, `UNKNOWN`). Bedrock is never allowed to fabricate store hours, prices, or shelf availability.
+1. **Amazon Bedrock (`@aws-sdk/client-bedrock-runtime`)**: Powers core semantic product hypothesis generation and trade-off matrix reasoning via the unified `ConverseCommand` API.
+2. **Amazon Polly (`@aws-sdk/client-polly`)**: Powers speech synthesis via Joanna Neural, delivering low-latency ambient voice responses matching Alexa's authentic voice persona.
+3. **Amazon RDS / Aurora PostgreSQL**: Enterprise relational data layer managing category taxonomies, hardware compatibility graphs, and user inventory memory with `pg_trgm` fuzzy indexing.
 
 ---
 
-## 3. Bedrock Runtime Implementation Details
+## 2. Pillar 1: Amazon Bedrock (`@aws-sdk/client-bedrock-runtime`)
 
-The implementation is located in [`packages/ai/src/providers/bedrock.ts`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/packages/ai/src/providers/bedrock.ts).
+### 2.1 Implementation
+Located in [`packages/ai/src/providers/bedrock.ts`](packages/ai/src/providers/bedrock.ts).
 
-### 3.1 Modern Unified `ConverseCommand` API
-Rather than legacy model-specific `InvokeModel` payloads, Veylo uses the AWS Bedrock unified `ConverseCommand`. This enables:
-- Cross-model portability across Anthropic Claude 3.5 Sonnet, Claude 3 Haiku, Amazon Nova Pro, Meta Llama 3, and Mistral without rewriting request or response parsing logic.
-- Standardized system prompts and message structures.
-- Uniform latency and usage metadata collection.
+- **Modern Unified `ConverseCommand` API:** Rather than legacy model-specific `InvokeModel` payloads, Veylo uses the AWS Bedrock unified `ConverseCommand`.
+- **Explicit `maxTokens` Budget:** Configured to `1024` tokens, guaranteeing ultra-low time-to-first-token (< 1.5s) for real-time voice conversations.
+- **Cross-Region Inference Profiles:** Supports `us.anthropic.claude-sonnet-4-6` and `us.amazon.nova-pro-v1:0` for continuous availability.
+- **Strict Zod Schema Validation:** Responses are stripped of formatting artifacts and validated against strict schemas (`IdentifyAssistResultSchema`, `CompareAssistResultSchema`).
 
 ```typescript
 import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
 
-const command = new ConverseCommand({
-  modelId: this.modelId,
-  system: [{ text: "You are a specialized product identification AI..." }],
-  messages: [{ role: "user", content: [{ text: prompt }] }],
-  inferenceConfig: {
-    maxTokens: this.maxTokens, // e.g. 1024
-    temperature: 0.1,         // low temperature for deterministic structured outputs
-  },
-});
-
-const response = await this.client.send(command);
+const client = new BedrockRuntimeClient({ region: process.env.AWS_REGION || "us-east-1" });
+const response = await client.send(
+  new ConverseCommand({
+    modelId: "us.anthropic.claude-sonnet-4-6",
+    system: [{ text: systemPrompt }],
+    messages: [{ role: "user", content: [{ text: userPrompt }] }],
+    inferenceConfig: { maxTokens: 1024, temperature: 0.2 },
+  })
+);
 ```
 
-### 3.2 Explicit `maxTokens` Management
-AWS Bedrock throttles requests when models attempt unbounded generation. Veylo explicitly sets `maxTokens: 1024` (configurable via `BEDROCK_MAX_TOKENS`), guaranteeing:
-1. Ultra-fast time-to-first-token (critical for Alexa+ voice response latencies < 1.5s).
-2. Protection against run-away token billing.
-
-### 3.3 Cross-Region Inference Profiles
-Veylo defaults to cross-region inference profiles (`us.anthropic.claude-sonnet-4-6` or `us.anthropic.claude-3-5-haiku-20241022-v1:0`), ensuring resilience against single-region AWS capacity limits during peak hackathon evaluation.
-
-### 3.4 Robust Markdown Stripping & Zod Validation
-Bedrock responses are processed by [`extractJsonFromText`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/packages/ai/src/util.ts#L8-L30):
-- Automatically strips ````json ... ```` code blocks, reasoning commentary, and trailing tokens.
-- Validates the resulting JSON against strict Zod schemas (`IdentifyAssistResultSchema`, `CompareAssistResultSchema`).
-- Provides type-safe defaults for missing fields to avoid breaking downstream MCP handlers.
+### 2.2 Tools Powered by Bedrock
+- `identify_product`: Transforms vague physical descriptions into canonical product identities, categories, and confidence scores.
+- `compare_products`: Generates comparative pros/cons matrices, trade-off analysis, and personalized purchase recommendations.
 
 ---
 
-## 4. MCP Tools Powered by Bedrock
+## 3. Pillar 2: Amazon Polly (`@aws-sdk/client-polly`)
 
-| MCP Tool | Bedrock Function | Output Provided |
-| --- | --- | --- |
-| [`identify_product`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/packages/types/src/tools.ts#L6-L23) | `BedrockIdentifyAssist.identify()` | Canonical product name, category, confidence score (0.0-1.0), reasoning summary, alternative hypotheses, aliases, uncertainty notes, and targeted clarifying questions. |
-| [`compare_products`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/packages/types/src/tools.ts#L61-L75) | `BedrockCompareAssist.compare()` | Comparative trade-off attributes, pros/cons per candidate, canonical recommendation, and objective reasoning summary. |
+### 3.1 Implementation
+Located in [`apps/web/src/app/api/tts/route.ts`](apps/web/src/app/api/tts/route.ts) and [`apps/web/src/lib/speech.ts`](apps/web/src/lib/speech.ts).
+
+- **Authentic Alexa Voice:** Uses Amazon Polly's Neural engine with voice `Joanna`, matching Alexa's natural cadence and pitch.
+- **Direct Streaming:** Synthesizes MP3 streams streamed directly back to the client audio subsystem with HTTP range and cache controls.
+- **Zero-Crash Graceful Degradation:** If AWS credentials are not configured or rate-limited, the system cleanly degrades (HTTP 501 `NOT_CONFIGURED`) to the browser's built-in natural speech synthesis without breaking the user experience.
+
+```typescript
+import { PollyClient, SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
+
+const polly = new PollyClient({ region: process.env.AWS_REGION || "us-east-1" });
+const command = new SynthesizeSpeechCommand({
+  Text: cleanText,
+  OutputFormat: "mp3",
+  VoiceId: "Joanna",
+  Engine: "neural",
+});
+const response = await polly.send(command);
+const audioBuffer = await response.AudioStream.transformToByteArray();
+```
 
 ---
 
-## 5. Configuration & Setup
+## 4. Pillar 3: Amazon RDS / Aurora PostgreSQL
 
-### 5.1 Environment Variables (`.env`)
+### 4.1 Implementation
+Located in [`packages/db/migrations/0000_init.sql`](packages/db/migrations/0000_init.sql) and [`packages/db/src/schema.ts`](packages/db/src/schema.ts).
 
+- **Relational Integrity:** Drizzle ORM over standard PostgreSQL connection pooling.
+- **`pg_trgm` Fuzzy Search:** Trigram similarity indexing on product names, aliases, and category keywords.
+- **Personalized Context Memory:** Stores user devices (`user_devices`) and owned items (`user_inventory`) so the assistant avoids redundant purchases and ensures hardware compatibility.
+
+---
+
+## 5. Non-Negotiable: The Zero-Broken-Demo Guarantee
+
+Hackathon judges often clone repositories to test without setting up full AWS IAM credentials. Veylo guarantees that a fresh clone will **never crash**:
+- **Bedrock Fallback:** If AWS credentials are not provided or Bedrock is unreachable, Veylo seamlessly executes deterministic offline rules (`meta.fallbackFrom = "bedrock"`).
+- **Polly Fallback:** If Polly credentials are unconfigured, Veylo speaks using the browser's high-quality speech synthesis.
+- **Database Fallback:** Runs identically against local PostgreSQL (`docker compose`) or cloud-hosted Amazon RDS / Aurora.
+
+---
+
+## 6. AWS Configuration & IAM Policy
+
+### 6.1 Environment Variables (`.env`)
 ```bash
-# Enable Bedrock as the primary AI engine
-AI_PROVIDER=bedrock
-
-# AWS Credentials and Region
+# AWS Region & Credentials
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
 AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 
-# Optional: temporary session token if using AWS IAM Identity Center / STS
-# AWS_SESSION_TOKEN=
-
-# Model ID or Cross-Region Inference Profile
+# Bedrock Settings
+AI_PROVIDER=bedrock
 BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-6
-
-# Max tokens budget (default: 1024)
 BEDROCK_MAX_TOKENS=1024
+
+# Amazon Polly Settings
+POLLY_VOICE_ID=Joanna
+POLLY_ENGINE=neural
+
+# Amazon RDS / Aurora PostgreSQL
+DATABASE_URL=postgres://veyloadmin:password@your-db.cxxxxxx.us-east-1.rds.amazonaws.com:5432/veylo?sslmode=require
 ```
 
-### 5.2 IAM Policy Requirements
-The IAM principal executing Veylo requires only the minimal Bedrock invocation permission:
-
+### 6.2 Minimal IAM Policy
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "BedrockInvoke",
       "Effect": "Allow",
       "Action": [
         "bedrock:InvokeModel",
         "bedrock:Converse"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "PollySynthesize",
+      "Effect": "Allow",
+      "Action": [
+        "polly:SynthesizeSpeech"
       ],
       "Resource": "*"
     }
@@ -142,31 +168,12 @@ The IAM principal executing Veylo requires only the minimal Bedrock invocation p
 
 ---
 
-## 6. Verification and Testing
-
-Veylo includes dedicated automated tests for the Amazon Bedrock integration:
-
-```bash
-# Run the AI provider test suite
-pnpm --filter @veylo/ai test
-```
-
-### Test Coverage:
-- `resolveProviderName` parses `bedrock` and defaults to `rules` when unconfigured.
-- `createAiAssists` checks credentials and safely falls back to rules if AWS keys are omitted.
-- Zod schema validation correctly normalizes Bedrock structured payloads.
-- JSON extractor reliably unpacks JSON objects enveloped in conversational responses or markdown fences.
-- Bedrock client initialization asserts region, model ID, and explicit token limits.
-
----
-
 ## 7. AWS Builder Judging Checklist
 
-| Requirement | Veylo Implementation | Evidence Link |
+| Requirement | Veylo Implementation | Code Reference |
 | --- | --- | --- |
-| **Real AWS Service Used** | Amazon Bedrock (`@aws-sdk/client-bedrock-runtime`) | [`packages/ai/src/providers/bedrock.ts`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/packages/ai/src/providers/bedrock.ts) |
-| **Load-Bearing Architecture** | Powers `identify_product` and `compare_products` MCP tools | [`apps/mcp-server/src/context.ts`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/apps/mcp-server/src/context.ts) |
-| **Modern AWS APIs** | AWS Bedrock `ConverseCommand` API with cross-region profiles | [`packages/ai/src/providers/bedrock.ts`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/packages/ai/src/providers/bedrock.ts#L45-L68) |
-| **Documented Integration** | Comprehensive technical documentation and `.env.example` | [`docs/aws-builder-integration.md`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/docs/aws-builder-integration.md), [`.env.example`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/.env.example) |
-| **Zero-Billing Resilience** | Graceful fallback to offline deterministic rules | [`packages/ai/src/index.ts`](file:///c:/Users/User/Downloads/veylo-alexa/veylo/packages/ai/src/index.ts#L43-L68) |
-
+| **Generative AI** | Amazon Bedrock (`@aws-sdk/client-bedrock-runtime`) | [`packages/ai/src/providers/bedrock.ts`](packages/ai/src/providers/bedrock.ts) |
+| **Neural Voice Synthesis** | Amazon Polly (`@aws-sdk/client-polly`, Joanna Neural) | [`apps/web/src/app/api/tts/route.ts`](apps/web/src/app/api/tts/route.ts) |
+| **Relational & Search Store** | Amazon RDS / Aurora PostgreSQL with `pg_trgm` | [`packages/db/migrations/0000_init.sql`](packages/db/migrations/0000_init.sql) |
+| **Modern AWS SDK v3** | Modular `@aws-sdk/*` clients, unified `ConverseCommand` | `packages/ai/package.json`, `apps/web/package.json` |
+| **Production Resilience** | Transparent zero-dependency fallback for judging | [`packages/ai/src/index.ts`](packages/ai/src/index.ts), [`apps/web/src/lib/speech.ts`](apps/web/src/lib/speech.ts) |

@@ -10,61 +10,48 @@ import {
   CompareAssistResultSchema,
   BedrockIdentifyAssist,
   BedrockCompareAssist,
+  DEFAULT_BEDROCK_MODEL_ID,
 } from "../src/index";
 
-test("resolveProviderName resolves valid providers and defaults unknown to rules", () => {
+const silent = { info() {}, warn() {} };
+
+/** Minimal stand-in for BedrockRuntimeClient.send that records the command it received. */
+function fakeClient(reply: string | Error) {
+  const sent: unknown[] = [];
+  return {
+    sent,
+    client: {
+      send: async (cmd: unknown) => {
+        sent.push(cmd);
+        if (reply instanceof Error) throw reply;
+        return { output: { message: { role: "assistant", content: [{ text: reply }] } } };
+      },
+    } as never,
+  };
+}
+
+test("resolveProviderName accepts bedrock and rules only; anything else means rules", () => {
   assert.equal(resolveProviderName("rules"), "rules");
   assert.equal(resolveProviderName("bedrock"), "bedrock");
   assert.equal(resolveProviderName("BEDROCK"), "bedrock");
-  assert.equal(resolveProviderName("gemini"), "gemini");
-  assert.equal(resolveProviderName("openai"), "openai");
+  assert.equal(resolveProviderName("unsupported"), "rules");
+  assert.equal(resolveProviderName("unknown"), "rules");
   assert.equal(resolveProviderName(undefined), "rules");
   assert.equal(resolveProviderName(""), "rules");
-  assert.equal(resolveProviderName("unknown-model"), "rules");
 });
 
-test("createAiAssists defaults to rules provider with no keys needed", () => {
-  const assists = createAiAssists({ provider: "rules" });
+test("createAiAssists defaults to rules provider with no AWS account needed", () => {
+  const assists = createAiAssists({ provider: "rules", logger: silent });
   assert.equal(assists.provider, "rules");
   assert.equal(assists.identifyAssist, undefined);
   assert.equal(assists.compareAssist, undefined);
 });
 
-test("createAiAssists initializes resilient Bedrock assists when credentials are not set", () => {
-  const originalKey = process.env.AWS_ACCESS_KEY_ID;
-  const originalSecret = process.env.AWS_SECRET_ACCESS_KEY;
-  delete process.env.AWS_ACCESS_KEY_ID;
-  delete process.env.AWS_SECRET_ACCESS_KEY;
-
-  const infos: string[] = [];
-  const assists = createAiAssists({
-    provider: "bedrock",
-    logger: { info: (msg) => infos.push(msg), warn() {} },
-  });
-
+test("createAiAssists builds Bedrock assists when requested", () => {
+  const assists = createAiAssists({ provider: "bedrock", logger: silent });
   assert.equal(assists.provider, "bedrock");
-  assert.ok(assists.identifyAssist);
-  assert.ok(assists.compareAssist);
-  assert.ok(infos.some((msg) => msg.includes("Amazon Bedrock")));
-
-  if (originalKey) process.env.AWS_ACCESS_KEY_ID = originalKey;
-  if (originalSecret) process.env.AWS_SECRET_ACCESS_KEY = originalSecret;
-});
-
-test("createAiAssists falls back to rules if gemini or openai keys are missing", () => {
-  const originalGemini = process.env.GEMINI_API_KEY;
-  const originalOpenAi = process.env.OPENAI_API_KEY;
-  delete process.env.GEMINI_API_KEY;
-  delete process.env.OPENAI_API_KEY;
-
-  const geminiAssists = createAiAssists({ provider: "gemini" });
-  assert.equal(geminiAssists.provider, "rules");
-
-  const openaiAssists = createAiAssists({ provider: "openai" });
-  assert.equal(openaiAssists.provider, "rules");
-
-  if (originalGemini) process.env.GEMINI_API_KEY = originalGemini;
-  if (originalOpenAi) process.env.OPENAI_API_KEY = originalOpenAi;
+  assert.ok(assists.identifyAssist instanceof BedrockIdentifyAssist);
+  assert.ok(assists.compareAssist instanceof BedrockCompareAssist);
 });
 
 test("extractJsonFromText handles raw JSON, markdown codeblocks, and text wrappers", () => {
@@ -98,9 +85,7 @@ test("CompareAssistResultSchema validates and applies defaults", () => {
   const json = JSON.stringify({
     recommendation: "USB-C to HDMI adapter is best",
     reasoningSummary: "Confirmed nearby stock",
-    notes: [
-      { product: "USB-C to HDMI adapter", pros: ["Compact"] },
-    ],
+    notes: [{ product: "USB-C to HDMI adapter", pros: ["Compact"] }],
   });
   const res = extractJsonFromText(json, CompareAssistResultSchema);
   assert.equal(res.recommendation, "USB-C to HDMI adapter is best");
@@ -133,54 +118,66 @@ test("prompt builders construct expected structured schemas", () => {
   assert.ok(cmpPrompt.user.includes("Current Stock State: LIKELY"));
 });
 
-test("Bedrock client initializes with explicit maxTokens and defaults", () => {
-  const assist = new BedrockIdentifyAssist({
-    region: "us-east-1",
-    modelId: "us.anthropic.claude-sonnet-4-6",
-    maxTokens: 512,
-  });
-  assert.equal(assist.provider, "bedrock");
-  assert.equal(assist.modelId, "us.anthropic.claude-sonnet-4-6");
-
-  const cmpAssist = new BedrockCompareAssist({
-    region: "us-east-1",
-  });
-  assert.equal(cmpAssist.provider, "bedrock");
-  assert.equal(cmpAssist.modelId, "us.anthropic.claude-sonnet-4-6");
+test("Bedrock assists use the configured model, defaulting to Amazon Nova Pro", () => {
+  const saved = process.env.BEDROCK_MODEL_ID;
+  delete process.env.BEDROCK_MODEL_ID;
+  try {
+    assert.equal(new BedrockIdentifyAssist({ client: fakeClient("{}").client }).modelId, DEFAULT_BEDROCK_MODEL_ID);
+    assert.equal(new BedrockCompareAssist({ modelId: "custom-model", client: fakeClient("{}").client }).modelId, "custom-model");
+  } finally {
+    if (saved !== undefined) process.env.BEDROCK_MODEL_ID = saved;
+  }
 });
 
-test("BedrockIdentifyAssist produces valid structured output adhering to schema", async () => {
-  const assist = new BedrockIdentifyAssist();
+test("BedrockIdentifyAssist parses a real Converse reply into the identify schema", async () => {
+  const fake = fakeClient(
+    '```json\n{"product":"PTFE tape","category":"plumbing consumables","confidence":0.92,"reasoning":"white tape for pipe threads","alternatives":["Pipe thread sealant"]}\n```',
+  );
+  const assist = new BedrockIdentifyAssist({ modelId: "test-model", client: fake.client });
   const res = await assist.identify({
-    description: "thing to connect laptop to TV",
-    shortlist: [
-      { name: "USB-C to HDMI adapter", category: "video adapters", description: "connects USB-C to HDMI", score: 0.92 }
-    ],
-    categories: ["video adapters"],
+    description: "the white tape plumbers use around pipe threads",
+    shortlist: [{ name: "PTFE tape", category: "plumbing consumables", description: "thread seal tape", score: 0.9 }],
+    categories: ["plumbing consumables"],
   });
-  assert.equal(res.product, "USB-C to HDMI adapter");
-  assert.ok(res.confidence > 0.8);
-  assert.ok(res.reasoning.includes("Bedrock"));
+  assert.equal(res.product, "PTFE tape");
+  assert.equal(res.confidence, 0.92);
+  assert.deepEqual(res.alternatives, ["Pipe thread sealant"]);
+  assert.equal(fake.sent.length, 1);
+  const input = (fake.sent[0] as { input: { modelId: string } }).input;
+  assert.equal(input.modelId, "test-model");
 });
 
-test("BedrockCompareAssist produces valid structured comparison adhering to schema", async () => {
-  const assist = new BedrockCompareAssist();
-  const res = await assist.compare({
+test("Bedrock assists throw instead of inventing output when the call fails", async () => {
+  const id = new BedrockIdentifyAssist({ client: fakeClient(new Error("AccessDeniedException")).client });
+  await assert.rejects(
+    () => id.identify({ description: "x", shortlist: [], categories: [] }),
+    /AccessDeniedException/,
+  );
+
+  const cmp = new BedrockCompareAssist({ client: fakeClient("sorry, I cannot help with that").client });
+  await assert.rejects(() => cmp.compare({ products: [] }), /did not contain a valid JSON object/);
+});
+
+test("BedrockCompareAssist parses a real Converse reply into the compare schema", async () => {
+  const fake = fakeClient(
+    JSON.stringify({
+      recommendation: "Standard PTFE tape suits water lines.",
+      reasoningSummary: "Gas lines need yellow gas-rated tape.",
+      notes: [{ product: "PTFE tape", pros: ["Cheap"], cons: ["Not gas rated"] }],
+    }),
+  );
+  const res = await new BedrockCompareAssist({ client: fake.client }).compare({
     products: [
       {
-        name: "USB-C to HDMI adapter",
-        category: "video adapters",
-        description: "adapter",
-        compatibility: ["USB-C", "HDMI"],
+        name: "PTFE tape",
+        category: "plumbing consumables",
+        description: "thread seal tape",
+        compatibility: [],
         attributes: {},
-        availability: "CONFIRMED",
-        distanceMeters: 450,
+        availability: "UNKNOWN",
       },
     ],
   });
-  assert.ok(res.recommendation.includes("USB-C to HDMI adapter"));
-  assert.ok(res.notes.length > 0);
-  assert.equal(res.notes[0]?.product, "USB-C to HDMI adapter");
+  assert.equal(res.notes[0]?.product, "PTFE tape");
+  assert.deepEqual(res.notes[0]?.cons, ["Not gas rated"]);
 });
-
-

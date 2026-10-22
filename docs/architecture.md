@@ -7,10 +7,10 @@ flowchart LR
   A["Alexa+ Voice Agent (or Echo Show Simulator)"] -->|"MCP (Streamable HTTP)"| M
   W["Web Application (Next.js 15)"] -->|"Typed MCP Client"| M
   M["MCP Server (/mcp :8787)"] --> C["@veylo/core"]
-  C --> AI["@veylo/ai (Multi-Engine Adapter)"]
+  C --> AI["@veylo/ai (Bedrock & Rules Engine)"]
   C --> LD["@veylo/local-discovery"]
-  C --> DB[("PostgreSQL / Supabase")]
-  AI --> P["Bedrock | Gemini | OpenAI | Rules"]
+  C --> DB[("Amazon RDS / Aurora PostgreSQL")]
+  AI --> P["Amazon Bedrock | Rules"]
   LD --> O["OpenStreetMap / Overpass / Nominatim"]
 ```
 
@@ -34,7 +34,7 @@ The web application and ambient voice agents use the exact same MCP tools. There
 1. **Exact Alias Matching:** Normalized string lookup against canonical aliases.
 2. **Trigram Fuzzy Matching:** PostgreSQL trigram similarity scoring (`pg_trgm`) for typo tolerance and phonetic similarity.
 3. **Category & Use-Case Deductions:** Semantic taxonomy navigation linking intent descriptors to canonical categories.
-4. **Structured Generative Inference:** Configured LLM assist (Amazon Bedrock Claude 3.5 Sonnet / Google Gemini / OpenAI) for complex zero-shot natural language understanding.
+4. **Structured Generative Inference:** Amazon Bedrock assist (Claude 3.5 Sonnet / Amazon Nova Pro via Converse API) for complex zero-shot natural language understanding.
 5. **Deterministic Fallback:** Seamless zero-key fallback to offline rules engine ensures 100% system availability even without external API credentials.
 
 Every external AI output is strictly validated against Zod schemas; schema violations or API rate limits automatically degrade to rule-based resolution without crashing the active session.
@@ -45,7 +45,7 @@ Every external AI output is strictly validated against Zod schemas; schema viola
 
 - **DDL Source of Truth:** `packages/db/migrations/*.sql` manages schemas, extensions (`pg_trgm`, `uuid-ossp`), and GIN/trigram indexing.
 - **Typed Schema Mirror:** `packages/db/src/schema.ts` provides compile-time type safety via Drizzle ORM.
-- **Dual-Mode Persistence:** Fully compatible with local containerized PostgreSQL (`docker compose`) or cloud-hosted Supabase instances.
+- **Dual-Mode Persistence:** Fully compatible with Amazon RDS / Aurora PostgreSQL Serverless v2 or local containerized PostgreSQL (`docker compose`).
 - **User Hardware & Inventory Memory:** `user_devices` and `user_inventory` tables enable cross-session hardware compatibility deductions (e.g. MacBook Pro M3 $\rightarrow$ USB-C) and prevent redundant purchases.
 - **Bidirectional Relationship Graph:** Models symmetric relationships (`alternative`, `often_confused_with`) and directional dependencies (`replacement_for`, `used_with`, `compatible_with`).
 

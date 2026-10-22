@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const AI_PROVIDERS = ["gemini", "openai", "bedrock", "rules"] as const;
+export const AI_PROVIDERS = ["bedrock", "rules"] as const;
 export const AiProviderName = z.enum(AI_PROVIDERS);
 export type AiProviderName = z.infer<typeof AiProviderName>;
 
