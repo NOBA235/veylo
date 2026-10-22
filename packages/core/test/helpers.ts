@@ -87,61 +87,16 @@ export function fixturePlace(
 }
 
 export const FIXTURE_PLACES: Place[] = [
-  fixturePlace("osm:node/1", "Best Buy - South Lamar", "electronics", 0.005, {
-    phone: "+1 512 443 6000",
-    website: "https://www.bestbuy.com",
-    address: "1004 S Lamar Blvd, Austin, TX 78704",
-    openingHours: "Mo-Sa 10:00-20:00, Su 11:00-19:00",
-  }),
-  fixturePlace("osm:way/1", "Best Buy - South Lamar", "electronics", 0.005, {
-    address: "1004 S Lamar Blvd, Austin, TX 78704",
-  }), // duplicate representation
-  fixturePlace("osm:node/2", "Altex Computers & Electronics", "computer", 0.02, {
-    phone: "+1 512 832 9131",
-    website: "https://www.altex.com",
-    address: "8940 Research Blvd, Austin, TX 78758",
-    openingHours: "Mo-Fr 08:30-18:30, Sa 09:00-17:00",
-  }),
-  fixturePlace("osm:node/3", "Apple Store - Barton Creek", "mobile_phone", 0.01, {
-    phone: "+1 512 347 7888",
-    website: "https://www.apple.com",
-    address: "2901 S Capital of Texas Hwy, Austin, TX 78746",
-    openingHours: "Mo-Sa 10:00-21:00, Su 11:00-18:00",
-  }),
-  fixturePlace("osm:node/4", "The Home Depot", "hardware", 0.004, {
-    phone: "+1 512 416 1120",
-    website: "https://www.homedepot.com",
-    address: "3600 S IH 35 Frontage Rd, Austin, TX 78704",
-    openingHours: "Mo-Sa 06:00-22:00, Su 08:00-20:00",
-  }),
-  fixturePlace("osm:node/5", "Ferguson Plumbing Supply", "plumbing_supplies", 0.006, {
-    phone: "+1 512 447 5571",
-    website: "https://www.ferguson.com",
-    address: "8201 Cross Park Dr, Austin, TX 78754",
-    openingHours: "Mo-Fr 07:00-17:00",
-  }),
-  fixturePlace("osm:node/6", "Breed & Co. Ace Hardware", "doityourself", 0.008, {
-    phone: "+1 512 474 6621",
-    website: "https://www.acehardware.com",
-    address: "718 W 29th St, Austin, TX 78705",
-    openingHours: "Mo-Sa 08:00-18:00, Su 10:00-17:00",
-  }),
-  fixturePlace("osm:node/7", "Target - South Congress", "supermarket", 0.003, {
-    phone: "+1 512 441 7771",
-    website: "https://www.target.com",
-    address: "2300 W Ben White Blvd, Austin, TX 78704",
-    openingHours: "Mo-Su 08:00-22:00",
-  }),
-  fixturePlace("osm:node/8", "Micro Center (Dallas Regional)", "electronics", 0.2, {
-    phone: "+1 972 664 8500",
-    website: "https://www.microcenter.com",
-    address: "13929 N Central Expy, Dallas, TX 75243",
-  }),
-  fixturePlace("osm:node/9", "Harbor Freight Tools", "hardware", 0.006, {
-    phone: "+1 512 892 4848",
-    website: "https://www.harborfreight.com",
-    address: "6800 West Gate Blvd, Austin, TX 78745",
-  }),
+  fixturePlace("osm:node/1", "Fixture Electronics", "electronics", 0.005, { phone: "+1 512 555 0100", website: "fixture-electronics.example" }),
+  fixturePlace("osm:way/1", "Fixture Electronics", "electronics", 0.005), // duplicate of node/1
+  fixturePlace("osm:node/2", "Fixture Computers", "computer", 0.02),
+  fixturePlace("osm:node/3", "Fixture Phones", "mobile_phone", 0.01),
+  fixturePlace("osm:node/4", "Fixture Hardware", "hardware", 0.004, { phone: "+1 512 555 0104" }),
+  fixturePlace("osm:node/5", "Fixture Plumbing Supply", "plumbing_supplies", 0.03),
+  fixturePlace("osm:node/6", "Fixture DIY", "doityourself", 0.015),
+  fixturePlace("osm:node/7", "Fixture Supermarket", "supermarket", 0.002),
+  fixturePlace("osm:node/8", "Faraway Electronics", "electronics", 0.2),
+  fixturePlace("osm:node/9", "", "electronics", 0.006),
 ];
 
 export class FakePlaceSource implements PlaceSource {

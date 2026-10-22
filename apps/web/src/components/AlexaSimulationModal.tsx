@@ -72,6 +72,7 @@ export function AlexaSimulationModal({
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const recognitionSessionRef = useRef(0);
   const lastSpokenAnswerRef = useRef<string | undefined>(undefined);
 
   const effectiveMode: AssistantMode = isLoading
@@ -97,13 +98,15 @@ export function AlexaSimulationModal({
   };
 
   const stopRecording = () => {
-    if (recognitionRef.current) {
+    const recognition = recognitionRef.current;
+    recognitionSessionRef.current += 1;
+    recognitionRef.current = null;
+    if (recognition) {
       try {
-        recognitionRef.current.stop();
+        recognition.abort();
       } catch {
         // ignore
       }
-      recognitionRef.current = null;
     }
     setIsRecording(false);
   };
@@ -144,9 +147,16 @@ export function AlexaSimulationModal({
 
   const toggleVoiceRecording = () => {
     if (isRecording) {
-      stopRecording();
-      if (voiceInput.trim()) {
-        handleTriggerQuery(voiceInput);
+      // Let the single onend handler submit the final transcript. Submitting here as well
+      // races that event and can launch the same query twice.
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          stopRecording();
+        }
+      } else {
+        setIsRecording(false);
       }
       return;
     }
@@ -173,8 +183,11 @@ export function AlexaSimulationModal({
       recognition.interimResults = true;
 
       let latestTranscript = "";
+      const session = recognitionSessionRef.current + 1;
+      recognitionSessionRef.current = session;
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
+        if (recognitionSessionRef.current !== session) return;
         let transcript = "";
         for (let i = 0; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript;
@@ -184,13 +197,17 @@ export function AlexaSimulationModal({
       };
 
       recognition.onerror = () => {
+        if (recognitionSessionRef.current !== session) return;
+        recognitionSessionRef.current += 1;
         setIsRecording(false);
-        recognitionRef.current = null;
+        if (recognitionRef.current === recognition) recognitionRef.current = null;
       };
 
       recognition.onend = () => {
+        if (recognitionSessionRef.current !== session) return;
+        recognitionSessionRef.current += 1;
         setIsRecording(false);
-        recognitionRef.current = null;
+        if (recognitionRef.current === recognition) recognitionRef.current = null;
         if (latestTranscript.trim()) {
           handleTriggerQuery(latestTranscript);
         }
@@ -200,6 +217,8 @@ export function AlexaSimulationModal({
       setIsRecording(true);
       recognition.start();
     } catch {
+      recognitionSessionRef.current += 1;
+      recognitionRef.current = null;
       setIsRecording(false);
     }
   };

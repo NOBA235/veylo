@@ -130,6 +130,9 @@ pnpm bootstrap
 
 ### 3. Start Development Servers
 ```bash
+# start mcp server
+pnpm.cmd --filter @veylo/mcp-server dev
+
 pnpm dev
 ```
 - **Web Application:** `http://localhost:3000`

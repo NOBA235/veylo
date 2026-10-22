@@ -12,19 +12,45 @@ interface SpeechCallbacks {
 
 let activeAudio: HTMLAudioElement | null = null;
 let activeAudioUrl: string | null = null;
+let activeSpeechRequest: AbortController | null = null;
+let speechGeneration = 0;
 
-export function stopAssistantSpeech(): void {
-  if (activeAudio) {
+function releaseAudio(audio: HTMLAudioElement, url: string, stopPlayback: boolean): void {
+  audio.onplay = null;
+  audio.onended = null;
+  audio.onerror = null;
+
+  if (stopPlayback) {
     try {
-      activeAudio.pause();
-      activeAudio.currentTime = 0;
+      audio.pause();
+      audio.currentTime = 0;
     } catch {
       // ignore
     }
-    activeAudio = null;
   }
 
-  if (activeAudioUrl) {
+  if (activeAudio === audio) activeAudio = null;
+  if (activeAudioUrl === url) {
+    activeAudioUrl = null;
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export function stopAssistantSpeech(): void {
+  speechGeneration += 1;
+
+  if (activeSpeechRequest) {
+    activeSpeechRequest.abort();
+    activeSpeechRequest = null;
+  }
+
+  if (activeAudio) {
+    releaseAudio(activeAudio, activeAudioUrl ?? "", true);
+  } else if (activeAudioUrl) {
     try {
       URL.revokeObjectURL(activeAudioUrl);
     } catch {
@@ -81,13 +107,17 @@ function pickBestBrowserVoice(): SpeechSynthesisVoice | null {
 /**
  * Fallback to browser SpeechSynthesis.
  */
-function speakBrowserSpeech(text: string, callbacks?: SpeechCallbacks): void {
+function speakBrowserSpeech(
+  text: string,
+  callbacks: SpeechCallbacks | undefined,
+  generation: number
+): void {
   if (typeof window === "undefined" || !("speechSynthesis" in window) || !text) {
-    callbacks?.onEnd?.();
+    if (generation === speechGeneration) callbacks?.onEnd?.();
     return;
   }
 
-  stopAssistantSpeech();
+  if (generation !== speechGeneration) return;
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = 1.0;
@@ -99,14 +129,15 @@ function speakBrowserSpeech(text: string, callbacks?: SpeechCallbacks): void {
   }
 
   utterance.onstart = () => {
-    callbacks?.onStart?.();
+    if (generation === speechGeneration) callbacks?.onStart?.();
   };
 
   utterance.onend = () => {
-    callbacks?.onEnd?.();
+    if (generation === speechGeneration) callbacks?.onEnd?.();
   };
 
   utterance.onerror = (e) => {
+    if (generation !== speechGeneration) return;
     callbacks?.onError?.(e);
     callbacks?.onEnd?.();
   };
@@ -127,53 +158,76 @@ export async function speakAssistantText(
   }
 
   stopAssistantSpeech();
+  const generation = speechGeneration;
+  const controller = new AbortController();
+  let browserFallbackStarted = false;
+  activeSpeechRequest = controller;
+
+  const fallbackToBrowser = () => {
+    if (generation !== speechGeneration || browserFallbackStarted) return;
+    browserFallbackStarted = true;
+    if (activeAudio && activeAudioUrl) {
+      releaseAudio(activeAudio, activeAudioUrl, true);
+    }
+    speakBrowserSpeech(text, callbacks, generation);
+  };
 
   try {
     const res = await fetch("/api/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
+      signal: controller.signal,
     });
+
+    if (generation !== speechGeneration) return;
 
     if (!res.ok) {
       // ElevenLabs is not configured or failed -> gracefully fall back to browser voice
-      speakBrowserSpeech(text, callbacks);
+      fallbackToBrowser();
       return;
     }
 
     const contentType = res.headers.get("content-type") || "";
     if (!contentType.includes("audio")) {
-      speakBrowserSpeech(text, callbacks);
+      fallbackToBrowser();
       return;
     }
 
     const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    activeAudioUrl = url;
+    if (generation !== speechGeneration) return;
 
+    const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    activeAudioUrl = url;
     activeAudio = audio;
 
     audio.onplay = () => {
-      callbacks?.onStart?.();
+      if (generation === speechGeneration) callbacks?.onStart?.();
     };
 
     audio.onended = () => {
-      stopAssistantSpeech();
+      if (generation !== speechGeneration) return;
+      releaseAudio(audio, url, false);
       callbacks?.onEnd?.();
     };
 
     audio.onerror = (e) => {
+      if (generation !== speechGeneration) return;
       console.warn("[TTS Audio Playback Warning]", e);
-      stopAssistantSpeech();
+      releaseAudio(audio, url, true);
       // On audio decode or playback error, fallback to browser
-      speakBrowserSpeech(text, callbacks);
+      fallbackToBrowser();
     };
 
     await audio.play();
+    if (generation !== speechGeneration) releaseAudio(audio, url, true);
   } catch (err) {
+    if (generation !== speechGeneration) return;
     console.warn("[TTS Request Error, falling back to Web Speech API]", err);
-    speakBrowserSpeech(text, callbacks);
+    fallbackToBrowser();
+  } finally {
+    if (activeSpeechRequest === controller) activeSpeechRequest = null;
   }
 }
 

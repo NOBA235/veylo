@@ -378,7 +378,12 @@ export default function Home() {
         shoppingListCount={shoppingList.length}
         onOpenTrace={() => setIsTraceOpen(true)}
         onOpenShoppingList={() => setIsShoppingListOpen(true)}
-        onOpenAlexaSimulation={() => setIsAlexaSimOpen(true)}
+        onOpenAlexaSimulation={() => {
+          // The modal auto-speaks the current answer. Stop any page-level playback first.
+          stopAssistantSpeech();
+          setIsSpeaking(false);
+          setIsAlexaSimOpen(true);
+        }}
         aiProvider={healthInfo?.ai?.provider || "rules"}
         mcpMode={healthInfo?.mcp?.mode || "streamable-http"}
         assistantMode={assistantMode}

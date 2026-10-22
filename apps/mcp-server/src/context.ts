@@ -67,7 +67,7 @@ export function buildContext(config: ServerConfig) {
     catalog: new CatalogService(createPgProductRepository(db)),
     identifyAssist: ai.identifyAssist,
     compareAssist: ai.compareAssist,
-    placeSources: [overpass, new FakePlaceSource(FIXTURE_PLACES)],
+    placeSources: [overpass],
     geocoder: realGeocoder,
     placeStore: new CachedPlaceStore(),
     ledger: new InMemoryEvidenceLedger(),

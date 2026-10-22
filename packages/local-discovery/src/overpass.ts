@@ -24,7 +24,7 @@ const DEFAULT_ENDPOINTS = [
   "https://overpass.kumi.systems/api/interpreter",
 ];
 
-const DEFAULT_TIMEOUT_MS = 18000;
+const DEFAULT_TIMEOUT_MS = 10000;
 const DEFAULT_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 export function formatOsmAddress(tags: Record<string, string>): string | undefined {
