@@ -135,3 +135,4 @@ Implemented a whitelist origin validator in `apps/mcp-server/src/config.ts` allo
 
 ### 6. Actionable Suggestion for AWS / Alexa+
 - **First-Class MCP Adapter in Alexa Skills Kit:** Allow Alexa+ to natively register and ingest remote MCP server URLs (over Streamable HTTP). Rather than writing custom Alexa skill boilerplate and lambda bridges, ambient voice planners could discover and execute standardized MCP tool contracts natively.
+
