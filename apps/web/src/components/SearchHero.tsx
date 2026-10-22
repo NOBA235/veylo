@@ -308,7 +308,7 @@ export function SearchHero({
               }}
               rows={2}
               placeholder="e.g. I need that little thing that lets me connect my laptop to a TV..."
-              className="w-full min-w-0 resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-zinc-900 outline-none placeholder:text-zinc-400 focus:ring-0 sm:text-base"
+              className="w-full min-w-0 resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-zinc-900 outline-none placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:text-base"
               disabled={isLoading}
               aria-label="Describe what you are looking for"
             />
