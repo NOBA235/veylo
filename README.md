@@ -170,6 +170,7 @@ npx @modelcontextprotocol/inspector http://127.0.0.1:8787/mcp
 - **[Evidence Trust Model](docs/evidence-model.md):** Verification hierarchy, confidence scoring, and anti-hallucination rules.
 - **[Alexa+ Integration Guide](docs/alexa-plus-integration.md):** Ambient voice dialogue design, system prompts, and Echo Show 10 multimodal canvas.
 - **[Evaluation & Walkthrough Guide](docs/evaluation-guide.md):** Step-by-step evaluator scenarios for testing real-time trace and inventory memory.
+- **[Developer Friction Log](docs/friction-log.md):** Engineering friction log detailing AWS SDK v3, Bedrock, and Polly integrations.
 - **[Product Roadmap](docs/roadmap.md):** Forward-looking engineering vision including multimodal camera vision and retail POS webhooks.
 
 ---
